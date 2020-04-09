@@ -33,6 +33,13 @@ class ConnectCommandsLoader(AzCommandsLoader):
         with self.argument_context('connect') as c:
             c.positional('service', help='Service you want to connect, use space as delimiter for multiple services.')
             c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resouce group to provision services.')
+            c.argument('app_name', options_list = ['--app-name'], help = 'Webapp name.')
+            c.argument('server', options_list = ['--server'], help = 'Server name.')
+            c.argument('sql', options_list = ['--sql'], help = 'SQL name.')
+            c.argument('username', options_list = ['--user-name'], help = 'User name of the SQL db.')
+            c.argument('password', options_list = ['--password'], help = 'User password of the SQL db.')
+            c.argument('aks_name', options_list = ['--aks-name'], help = 'AKS Name.')
+            c.argument('acr_name', options_list = ['--acr-name'], help = 'ACR Name.')
 
 
 COMMAND_LOADER_CLS = ConnectCommandsLoader

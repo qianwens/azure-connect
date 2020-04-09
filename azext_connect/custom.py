@@ -11,17 +11,20 @@ import time
 
 SERVICE_MAP = {
     'signalr': ('signalr', 'Azure SignalR Service', 1),
-    'webapp': ('webapp', 'Azure Web App Service', 2)
+    'sql': ('sql', 'Azure SQL Database', 2),
+    'webapp': ('webapp', 'Azure Web App Service', 3),
+    'acr': ('acr', 'Azure Container Registry', 4),
+    'aks': ('aks', 'Azure Kubernetes Service', 5)
 }
 DEFAULT_CLI = get_default_cli()
 
 
-def connect(service, resource_group=None):
+def connect(service, resource_group=None, app_name = None, server = None, sql = None, username = None, password = None, aks_name = None, acr_name = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
     service_list = validate(service)
     check_resource(service_list, resource_group)
-    deploy(service_list, resource_group)
+    deploy(service_list, resource_group, app_name, server, sql, username, password, aks_name, acr_name)
 
 
 def validate(service):
@@ -40,12 +43,12 @@ def check_resource(service_list, resource_group):
         print('No %s found.' % s[1])
 
 
-def deploy(service_list, resource_group):
+def deploy(service_list, resource_group, app_name, server, sql, username, password, aks_name, acr_name):
     start = time.monotonic()
     deployment_id = random.randint(0, 1000000)
     settings = {}
     for service in service_list:
-        create_resource(service, resource_group, deployment_id, settings)
+        create_resource(service, resource_group, deployment_id, settings, app_name, server, sql, username, password, aks_name, acr_name)
     print('Complete in %d seconds' % (time.monotonic() - start))
 
 
@@ -53,7 +56,7 @@ def get_resource_name(resource, deployment_id):
     return '%s%d' % (resource.lower(), deployment_id)
 
 
-def create_resource(service, resource_group, deployment_id, settings):
+def create_resource(service, resource_group, deployment_id, settings, app_name, server, sql, username, password, aks_name, acr_name):
     if service[0] == 'signalr':
         # create SignalR resource
         resource_name = get_resource_name('mySignalR', deployment_id)
@@ -80,51 +83,115 @@ def create_resource(service, resource_group, deployment_id, settings):
         connection_string = DEFAULT_CLI.result.result
         settings['Azure:SignalR:ConnectionString'] = connection_string
         print('Connection string of %s: %s' % (resource_name, connection_string))
+    
+    elif service[0] == 'sql':
+        # # create sql server
+        # parameters = [
+        #     'sql', 'server', 'create',
+        #     '--name', server,
+        #     '--resource-group', resource_group,
+        #     '--location', 'east us',
+        #     '--admin-user', username,
+        #     '--admin-password', password
+        # ]
+        # if DEFAULT_CLI.invoke(parameters):
+        #     raise CLIError('Fail to create resource %s' % server)
+        # # config server firewall rule
+        # parameters = [
+        #     'sql', 'server', 'firewall-rule', 'create',
+        #     '--server', server,
+        #     '--resource-group', resource_group,
+        #     '--name', 'AllowAllIps',
+        #     '--start-ip-address', '0.0.0.0',
+        #     '--end-ip-address', '0.0.0.0'
+        # ]
+        # DEFAULT_CLI.invoke(parameters)
+        # # create sql db
+        # parameters = [
+        #     'sql', 'sql', 'db', 'create',
+        #     '--server', server,
+        #     '--resource-group', resource_group,
+        #     '--name', sql,
+        #     '--service-objective', '50'
+        # ]
+        # if DEFAULT_CLI.invoke(parameters):
+        #     raise CLIError('Fail to create resource %s' % sql)
+        # save connection string
+        connection_string = "Server=tcp:" + server + ".database.windows.net,1433;Database=" + sql + ";User ID=" + username + ";Password=" + password + ";Encrypt=true;Connection Timeout=30;"
+        settings['MyDbConnection'] = connection_string
+        print('Connection string of %s: %s' % (sql, connection_string))
+    
     elif service[0] == 'webapp':
         # create App Service plan
-        plan_name = get_resource_name('myAppService', deployment_id)
-        print('Create App Service Plan: %s' % plan_name)
+        # plan_name = get_resource_name('myAppService', deployment_id)
+        # print('Create App Service Plan: %s' % plan_name)
+        # parameters = [
+        #     'appservice', 'plan', 'create',
+        #     '--name', plan_name,
+        #     '--resource-group', resource_group,
+        #     '--sku', 'FREE'
+        # ]
+        # if DEFAULT_CLI.invoke(parameters):
+        #     raise CLIError('Fail to create resource %s' % plan_name)
+        # # create Web App resource
+        # resource_name = get_resource_name('myWebApp', deployment_id)
+        # print('Create %s resource: %s' % (service[1], resource_name))
+        # parameters = [
+        #     'webapp', 'create',
+        #     '--name', resource_name,
+        #     '--resource-group', resource_group,
+        #     '--plan', plan_name
+        # ]
+        # if DEFAULT_CLI.invoke(parameters):
+        #     raise CLIError('Fail to create resource %s' % resource_name)
+        # # config app settings
+        # print('Config app settings')
+        # parameters = [
+        #     'webapp', 'config', 'appsettings', 'set',
+        #     '--name', resource_name,
+        #     '--resource-group', resource_group,
+        #     '--settings'
+        # ]
+        # settings['PROJECT'] = 'samples/ChatRoom/ChatRoom.csproj'
+        # for k, v in settings.items():
+        #     parameters.append('%s=%s' % (k, v))
+        # DEFAULT_CLI.invoke(parameters)
+        # # deploy sample code
+        # url = 'https://github.com/aspnet/AzureSignalR-samples'
+        # print('Deploy sample code from %s/samples/ChatRoom' % url)
+        # parameters = [
+        #     'webapp', 'deployment', 'source', 'config',
+        #     '--name', resource_name,
+        #     '--resource-group', resource_group,
+        #     '--repo-url', url,
+        #     '--branch', 'master',
+        #     '--manual-integration'
+        # ]
+        # DEFAULT_CLI.invoke(parameters)
+        # print('App url: http://%s.azurewebsites.net/' % resource_name)
         parameters = [
-            'appservice', 'plan', 'create',
-            '--name', plan_name,
+            'webapp', 'config', 'connection-string', 'set',
+            '--name', app_name,
             '--resource-group', resource_group,
-            '--sku', 'FREE'
-        ]
-        if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create resource %s' % plan_name)
-        # create Web App resource
-        resource_name = get_resource_name('myWebApp', deployment_id)
-        print('Create %s resource: %s' % (service[1], resource_name))
-        parameters = [
-            'webapp', 'create',
-            '--name', resource_name,
-            '--resource-group', resource_group,
-            '--plan', plan_name
-        ]
-        if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create resource %s' % resource_name)
-        # config app settings
-        print('Config app settings')
-        parameters = [
-            'webapp', 'config', 'appsettings', 'set',
-            '--name', resource_name,
-            '--resource-group', resource_group,
+            '--connection-string-type', 'SQLServer',
             '--settings'
         ]
-        settings['PROJECT'] = 'samples/ChatRoom/ChatRoom.csproj'
         for k, v in settings.items():
             parameters.append('%s=%s' % (k, v))
         DEFAULT_CLI.invoke(parameters)
-        # deploy sample code
-        url = 'https://github.com/aspnet/AzureSignalR-samples'
-        print('Deploy sample code from %s/samples/ChatRoom' % url)
         parameters = [
-            'webapp', 'deployment', 'source', 'config',
-            '--name', resource_name,
+            'webapp', 'config', 'appsettings', 'set',
+            '--name', app_name,
             '--resource-group', resource_group,
-            '--repo-url', url,
-            '--branch', 'master',
-            '--manual-integration'
+            '--settings', 'ASPNETCORE_ENVIRONMENT=Production'
         ]
         DEFAULT_CLI.invoke(parameters)
-        print('App url: http://%s.azurewebsites.net/' % resource_name)
+
+    elif service[0] == 'aks':
+        parameters = [
+        'aks', 'update', 
+        '-n', aks_name,
+        '-g', resource_group,
+        '--attach-acr', acr_name
+        ]
+        DEFAULT_CLI.invoke(parameters)
