@@ -19,13 +19,21 @@ SERVICE_MAP = {
 DEFAULT_CLI = get_default_cli()
 
 
-def connect(service, resource_group=None, app_name = None, server = None, sql = None, username = None, password = None, aks_name = None, acr_name = None):
+def connect(service, resource_group, para_list):
     if not resource_group:
         raise CLIError('--resource-group not specified')
     service_list = validate(service)
     check_resource(service_list, resource_group)
-    deploy(service_list, resource_group, app_name, server, sql, username, password, aks_name, acr_name)
+    para_dict = parseParameter(para_list)
+    # print(para_dict)
+    deploy(service_list, resource_group, para_dict)
 
+def parseParameter(para_list):
+    dict = {}
+    for s in para_list.split():
+        tmp = s.split(':',1)
+        dict[tmp[0]] = tmp[1]
+    return dict
 
 def validate(service):
     result = []
@@ -43,20 +51,19 @@ def check_resource(service_list, resource_group):
         print('No %s found.' % s[1])
 
 
-def deploy(service_list, resource_group, app_name, server, sql, username, password, aks_name, acr_name):
+def deploy(service_list, resource_group, para_dict):
     start = time.monotonic()
     deployment_id = random.randint(0, 1000000)
     settings = {}
     for service in service_list:
-        create_resource(service, resource_group, deployment_id, settings, app_name, server, sql, username, password, aks_name, acr_name)
+        create_resource(service, resource_group, deployment_id, settings, para_dict)
     print('Complete in %d seconds' % (time.monotonic() - start))
-
 
 def get_resource_name(resource, deployment_id):
     return '%s%d' % (resource.lower(), deployment_id)
 
 
-def create_resource(service, resource_group, deployment_id, settings, app_name, server, sql, username, password, aks_name, acr_name):
+def create_resource(service, resource_group, deployment_id, settings, para_dict):
     if service[0] == 'signalr':
         # create SignalR resource
         resource_name = get_resource_name('mySignalR', deployment_id)
@@ -117,9 +124,9 @@ def create_resource(service, resource_group, deployment_id, settings, app_name, 
         # if DEFAULT_CLI.invoke(parameters):
         #     raise CLIError('Fail to create resource %s' % sql)
         # save connection string
-        connection_string = "Server=tcp:" + server + ".database.windows.net,1433;Database=" + sql + ";User ID=" + username + ";Password=" + password + ";Encrypt=true;Connection Timeout=30;"
+        connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['sql'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
         settings['MyDbConnection'] = connection_string
-        print('Connection string of %s: %s' % (sql, connection_string))
+        print('Connection string of %s: %s' % (para_dict['sql'], connection_string))
     
     elif service[0] == 'webapp':
         # create App Service plan
@@ -171,7 +178,7 @@ def create_resource(service, resource_group, deployment_id, settings, app_name, 
         # print('App url: http://%s.azurewebsites.net/' % resource_name)
         parameters = [
             'webapp', 'config', 'connection-string', 'set',
-            '--name', app_name,
+            '--name', para_dict['app_name'],
             '--resource-group', resource_group,
             '--connection-string-type', 'SQLServer',
             '--settings'
@@ -181,7 +188,7 @@ def create_resource(service, resource_group, deployment_id, settings, app_name, 
         DEFAULT_CLI.invoke(parameters)
         parameters = [
             'webapp', 'config', 'appsettings', 'set',
-            '--name', app_name,
+            '--name', para_dict['app_name'],
             '--resource-group', resource_group,
             '--settings', 'ASPNETCORE_ENVIRONMENT=Production'
         ]
@@ -190,8 +197,8 @@ def create_resource(service, resource_group, deployment_id, settings, app_name, 
     elif service[0] == 'aks':
         parameters = [
         'aks', 'update', 
-        '-n', aks_name,
+        '-n', para_dict['aks_name'],
         '-g', resource_group,
-        '--attach-acr', acr_name
+        '--attach-acr', para_dict['acr_name']
         ]
         DEFAULT_CLI.invoke(parameters)
