@@ -196,6 +196,32 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
 
     elif service[0] == 'aks':
         parameters = [
+        'aks', 'show', 
+        '--resource-group', resource_group,
+        '--name', para_dict['aks_name'],
+        '--query', 'servicePrincipalProfile.clientId'
+        ]
+        DEFAULT_CLI.invoke(parameters)
+        sp_id = DEFAULT_CLI.result.result
+        # print(sp_id)
+        parameters = [
+        'ad', 'sp', 'credential', 'reset',
+        '--name', sp_id,
+        '--query', 'password'
+        ]
+        DEFAULT_CLI.invoke(parameters)
+        sp_password = DEFAULT_CLI.result.result
+        print('Password of Service Principal %s: %s' % (sp_id, sp_password))
+        parameters = [
+        'aks', 'update-credentials', 
+        '-n', para_dict['aks_name'],
+        '-g', resource_group,
+        '--service-principal', sp_id,
+        '--client-secret', sp_password,
+        '--reset-service-principal'
+        ]
+        DEFAULT_CLI.invoke(parameters)
+        parameters = [
         'aks', 'update', 
         '-n', para_dict['aks_name'],
         '-g', resource_group,
