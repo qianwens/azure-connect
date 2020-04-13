@@ -7,14 +7,17 @@ from knack.util import CLIError
 from azure.cli.core import get_default_cli
 import random
 import time
-
+from ._cosmosdb import cosmosdb_handler
+from ._spring_cloud import spring_cloud_handler
 
 SERVICE_MAP = {
     'signalr': ('signalr', 'Azure SignalR Service', 1),
     'sql': ('sql', 'Azure SQL Database', 2),
     'webapp': ('webapp', 'Azure Web App Service', 3),
     'acr': ('acr', 'Azure Container Registry', 4),
-    'aks': ('aks', 'Azure Kubernetes Service', 5)
+    'aks': ('aks', 'Azure Kubernetes Service', 5),
+    'cosmosdb': ('cosmosdb', 'Azure CosmosDB Service', 6),
+    'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 7)
 }
 DEFAULT_CLI = get_default_cli()
 
@@ -228,3 +231,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         '--attach-acr', para_dict['acr_name']
         ]
         DEFAULT_CLI.invoke(parameters)
+    elif service[0] == 'cosmosdb':
+        cosmosdb_handler(resource_group, deployment_id, settings, para_dict)
+    elif service[0] == 'spring-cloud':
+        spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
