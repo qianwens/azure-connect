@@ -8,6 +8,7 @@ from azure.cli.core import get_default_cli
 import random
 import time
 from ._cosmosdb import cosmosdb_handler
+from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 
 SERVICE_MAP = {
@@ -17,7 +18,8 @@ SERVICE_MAP = {
     'acr': ('acr', 'Azure Container Registry', 4),
     'aks': ('aks', 'Azure Kubernetes Service', 5),
     'cosmosdb': ('cosmosdb', 'Azure CosmosDB Service', 6),
-    'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 7)
+    'mysql': ('mysql', 'Azure Database for MySQL', 7),
+    'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 8)
 }
 DEFAULT_CLI = get_default_cli()
 
@@ -239,5 +241,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         DEFAULT_CLI.invoke(parameters)
     elif service[0] == 'cosmosdb':
         cosmosdb_handler(resource_group, deployment_id, settings, para_dict)
+    elif service[0] == 'mysql':
+        mysql_handler(resource_group, deployment_id, settings, para_dict)
     elif service[0] == 'spring-cloud':
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
