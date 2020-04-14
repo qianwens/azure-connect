@@ -51,7 +51,7 @@ def check_resource(service_list, resource_group):
     print('Resource Group %s already exists.' % resource_group)
     print('Connecting %s in resource group %s.' % (', '.join([s[1] for s in service_list]), resource_group))
     for s in service_list:
-        print('No %s found.' % s[1])
+        print('Resource %s already exists.' % s[1])
 
 
 def deploy(service_list, resource_group, para_dict):
@@ -198,6 +198,38 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         DEFAULT_CLI.invoke(parameters)
 
     elif service[0] == 'aks':
+        parameters = [
+        'aks', 'show', 
+        '--resource-group', resource_group,
+        '--name', para_dict['aks_name'],
+        '--query', 'servicePrincipalProfile.clientId'
+        ]
+        DEFAULT_CLI.invoke(parameters)
+        sp_id = DEFAULT_CLI.result.result
+        print('Service Principal id: %s' % sp_id)
+        # if 'aks_secret' in para_dict:
+        #     sp_password = para_dict['aks_secret']
+        #     print('Password of Service Principal %s: %s' % (sp_id, sp_password))
+        # else:
+        #     print('Reset service principal password.')
+        #     parameters = [
+        #     'ad', 'sp', 'credential', 'reset',
+        #     '--name', sp_id,
+        #     '--query', 'password'
+        #     ]
+        #     DEFAULT_CLI.invoke(parameters)
+        #     sp_password = DEFAULT_CLI.result.result
+        #     print('Password of Service Principal %s: %s' % (sp_id, sp_password))
+        #     time.sleep(30)
+        #     parameters = [
+        #     'aks', 'update-credentials', 
+        #     '-n', para_dict['aks_name'],
+        #     '-g', resource_group,
+        #     '--service-principal', sp_id,
+        #     '--client-secret', sp_password,
+        #     '--reset-service-principal'
+        #     ]
+        #     DEFAULT_CLI.invoke(parameters)
         parameters = [
         'aks', 'update', 
         '-n', para_dict['aks_name'],
