@@ -26,7 +26,7 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         username = settings['username']
         key = settings['key']
         resource_id = settings['mysql_resource_id']
-        database_name = para_dict['database_name']
+        database_name = settings['database_name']
     # check azure spring-cloud service
     parameters = [
         'spring-cloud', 'show',

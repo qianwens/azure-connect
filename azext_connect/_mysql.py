@@ -9,6 +9,7 @@ def mysql_handler(resource_group, deployment_id, settings, para_dict):
     admin_user = para_dict['admin_user']
     admin_password = para_dict['admin_password']
     subscription_id = para_dict['subscription_id']
+    database_name = para_dict['database_name']
 
     # check if mysql server availability
     parameters = [
@@ -54,6 +55,25 @@ def mysql_handler(resource_group, deployment_id, settings, para_dict):
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to configure SSL settings for %s.' % mysql_server_name)
 
+    # Create database, check if it exists, if not create it
+    parameters = [
+        'mysql', 'db', 'show',
+        '--name', database_name,
+        '--server-name', mysql_server_name,
+        '--resource-group', resource_group
+    ]
+    try:
+        DEFAULT_CLI.invoke(parameters)
+    except:
+        parameters = [
+            'mysql', 'db', 'create',
+            '--name', database_name,
+            '--server-name', mysql_server_name,
+            '--resource-group', resource_group
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create database %s for server %s.' % (database_name, mysql_server_name))
+        
     # optional get connection info
     parameters = [
         'mysql', 'server', 'show',
@@ -67,4 +87,5 @@ def mysql_handler(resource_group, deployment_id, settings, para_dict):
     settings['binding_type'] = 'Azure Database for MySQL'
     settings['username'] = admin_user
     settings['key'] = admin_password
+    settings['database_name'] = database_name
     print('MySQL Server %s is ready.' % mysql_server_name)
