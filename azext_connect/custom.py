@@ -32,7 +32,7 @@ DEFAULT_CLI = get_default_cli()
 #     # print(para_dict)
 #     deploy(service_list, resource_group, para_dict)
 
-def connect(resource_group, aks = None, acr = None):
+def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
     service_list = []
@@ -43,17 +43,51 @@ def connect(resource_group, aks = None, acr = None):
     if acr:
         service_list.append(SERVICE_MAP['acr'])
         para_list = para_list + 'acr_name:' + acr + ' '
+    if webapp:
+        service_list.append(SERVICE_MAP['webapp'])
+        para_list = para_list + 'app_name:' + webapp + ' '
+    if sql:
+        service_list.append(SERVICE_MAP['sql'])
+        para_list = para_list + 'server:' + sql + ' '
+        print("Please input the database name.")
+        db = input("DB name:")
+        print("Please input the aad user name.")
+        aad = input("aad user name:")
+        para_list = para_list + 'sql:' + db + ' aad-user-name:' + aad + " msi:1"
     print(para_list)
-    sorted(service_list, key=lambda x: x[2])
+    service_list.sort(key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
     deploy(service_list, resource_group, para_dict)
     
 
-def connect_test(resource_group):
+def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
-    print('Resource Group %s is already connnected.' % resource_group)
+    services = ''
+    para_list = ''
+    service_list = []
+    if aks:
+        services = services + aks + ','
+        service_list.append(SERVICE_MAP['aks'])
+        para_list = para_list + 'aks:' + aks + ' '
+    if acr:
+        services = services + acr + ','
+        service_list.append(SERVICE_MAP['acr'])
+        para_list = para_list + 'acr:' + acr + ' '
+    if webapp:
+        services = services + webapp + ','
+        service_list.append(SERVICE_MAP['webapp'])
+        para_list = para_list + 'webapp:' + webapp + ' '
+    if sql:
+        services = services + sql + ','
+        service_list.append(SERVICE_MAP['sql'])
+        para_list = para_list + 'sql:' + sql + ' '
+    service_list.sort(key=lambda x: x[2])
+    para_dict = parseParameter(para_list)
+    print('Resource Group %s service: %s' % (resource_group, services))
+    # print(service_list[0][0])
+    print('%s -> %s connected!!' % (para_dict[service_list[0][0]], para_dict[service_list[1][0]]))
 
 def parseParameter(para_list):
     dict = {}

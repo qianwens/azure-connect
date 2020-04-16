@@ -37,7 +37,7 @@ class ConnectCommandsLoader(AzCommandsLoader):
             c.argument('ACR', options_list = ['--acr'], help = 'ACR name.')
             c.argument('AKS', options_list = ['--aks'], help = 'AKS name.')
             c.argument('webapp', options_list = ['--webapp'], help = 'Webapp Name')
-            c.argument('sql', options_list = ['--sql'], help = 'SQL database name')
+            c.argument('sql', options_list = ['--sql'], help = 'SQL Server name')
             # c.argument('app_name', options_list = ['--app-name'], help = 'Webapp name.')
             # c.argument('server', options_list = ['--server'], help = 'Server name.')
             # c.argument('sql', options_list = ['--sql'], help = 'SQL name.')
@@ -48,6 +48,10 @@ class ConnectCommandsLoader(AzCommandsLoader):
             c.argument('para_list', options_list = ['--para-list'], help = 'All the necessary parameters.')
         with self.argument_context('connect test') as c:
             c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resouce group to provision services.')
+            c.argument('ACR', options_list = ['--acr'], help = 'ACR name.')
+            c.argument('AKS', options_list = ['--aks'], help = 'AKS name.')
+            c.argument('webapp', options_list = ['--webapp'], help = 'Webapp Name')
+            c.argument('sql', options_list = ['--sql'], help = 'SQL Server name')
 
 
 COMMAND_LOADER_CLS = ConnectCommandsLoader
