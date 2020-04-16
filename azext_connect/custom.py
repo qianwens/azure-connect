@@ -9,6 +9,7 @@ import random
 import time
 from ._cosmosdb import cosmosdb_handler
 from ._spring_cloud import spring_cloud_handler
+import subprocess
 
 SERVICE_MAP = {
     'signalr': ('signalr', 'Azure SignalR Service', 1),
@@ -22,14 +23,37 @@ SERVICE_MAP = {
 DEFAULT_CLI = get_default_cli()
 
 
-def connect(service, resource_group, para_list):
+# def connect(service, resource_group, para_list):
+#     if not resource_group:
+#         raise CLIError('--resource-group not specified')
+#     service_list = validate(service)
+#     check_resource(service_list, resource_group)
+#     para_dict = parseParameter(para_list)
+#     # print(para_dict)
+#     deploy(service_list, resource_group, para_dict)
+
+def connect(resource_group, aks = None, acr = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
-    service_list = validate(service)
+    service_list = []
+    para_list = ''
+    if aks:
+        service_list.append(SERVICE_MAP['aks'])
+        para_list = para_list + 'aks_name:' + aks + ' '
+    if acr:
+        service_list.append(SERVICE_MAP['acr'])
+        para_list = para_list + 'acr_name:' + acr + ' '
+    print(para_list)
+    sorted(service_list, key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
-    # print(para_dict)
     deploy(service_list, resource_group, para_dict)
+    
+
+def connect_test(resource_group):
+    if not resource_group:
+        raise CLIError('--resource-group not specified')
+    print('Resource Group %s is already connnected.' % resource_group)
 
 def parseParameter(para_list):
     dict = {}
@@ -127,9 +151,22 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         # if DEFAULT_CLI.invoke(parameters):
         #     raise CLIError('Fail to create resource %s' % sql)
         # save connection string
-        connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['sql'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
-        settings['MyDbConnection'] = connection_string
-        print('Connection string of %s: %s' % (para_dict['sql'], connection_string))
+        if 'msi' not in para_dict:
+            connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['sql'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
+            settings['MyDbConnection'] = connection_string
+            print('Connection string of %s: %s' % (para_dict['sql'], connection_string))
+        else:
+            print("Using MSI to connect Webapp and SQL.")
+            parameters = [
+                'webapp', 'identity', 'assign',
+                '--resource-group', resource_group,
+                '--name', para_dict['app_name']
+            ]
+            DEFAULT_CLI.invoke(parameters)
+            print('Running SQL commands.')
+            statement = "CREATE USER [" + para_dict['app_name'] + "] FROM EXTERNAL PROVIDER; ALTER ROLE db_datareader ADD MEMBER [" + para_dict['app_name'] + "]; ALTER ROLE db_datawriter ADD MEMBER [" + para_dict['app_name'] + "]; ALTER ROLE db_ddladmin ADD MEMBER [" + para_dict['app_name'] + "];"
+            server = para_dict['server'] + ".database.windows.net"
+            subprocess.call(["sqlcmd", "-S", server, "-d", para_dict['sql'], "-U", para_dict['aad-user-name'], "-G", "-l", "30", '-Q', statement])
     
     elif service[0] == 'webapp':
         # create App Service plan
@@ -179,23 +216,36 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         # ]
         # DEFAULT_CLI.invoke(parameters)
         # print('App url: http://%s.azurewebsites.net/' % resource_name)
-        parameters = [
-            'webapp', 'config', 'connection-string', 'set',
-            '--name', para_dict['app_name'],
-            '--resource-group', resource_group,
-            '--connection-string-type', 'SQLServer',
-            '--settings'
-        ]
-        for k, v in settings.items():
-            parameters.append('%s=%s' % (k, v))
-        DEFAULT_CLI.invoke(parameters)
-        parameters = [
-            'webapp', 'config', 'appsettings', 'set',
-            '--name', para_dict['app_name'],
-            '--resource-group', resource_group,
-            '--settings', 'ASPNETCORE_ENVIRONMENT=Production'
-        ]
-        DEFAULT_CLI.invoke(parameters)
+        if 'msi' not in para_dict:
+            print("Using connection-string to connect Webapp and SQL.")
+            parameters = [
+                'webapp', 'config', 'connection-string', 'set',
+                '--name', para_dict['app_name'],
+                '--resource-group', resource_group,
+                '--connection-string-type', 'SQLServer',
+                '--settings'
+            ]
+            for k, v in settings.items():
+                parameters.append('%s=%s' % (k, v))
+            DEFAULT_CLI.invoke(parameters)
+            parameters = [
+                'webapp', 'config', 'appsettings', 'set',
+                '--name', para_dict['app_name'],
+                '--resource-group', resource_group,
+                '--settings', 'ASPNETCORE_ENVIRONMENT=Production'
+            ]
+            DEFAULT_CLI.invoke(parameters)
+        else:
+            print("Deploy to Webapp.")
+            parameters = [
+                'webapp', 'deployment', 'source', 'config',
+                '-n', para_dict['app_name'],
+                '-g', resource_group,
+                '--repo-url', "https://github.com/KennethBWSong/dotnetcore-sqldb-tutorial.git",
+                '--branch', 'msi',
+                '--manual-integration'
+            ]
+            DEFAULT_CLI.invoke(parameters)
 
     elif service[0] == 'aks':
         parameters = [
