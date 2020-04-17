@@ -93,17 +93,28 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to deploy jar file %s to App %s.' % (jar_path, app_name))
     # binding DB
-    parameters = [
-        'spring-cloud', 'app', 'binding', 'cosmos', 'add',
-        '--api-type', 'sql',
-        '--app', app_name,
-        '--name', binding_name,
-        '--resource-id', resource_id,
-        '--service', asc_name,
-        '--database-name', database_name,
-        '--resource-group', resource_group,
-        '--output', 'none'
-    ]
+    if binding_type == SERVICE_BINDING_TYPE[0]:
+        parameters = [
+            'spring-cloud', 'app', 'binding', 'cosmos', 'add',
+            '--api-type', 'sql',
+            '--app', app_name,
+            '--name', binding_name,
+            '--resource-id', resource_id,
+            '--service', asc_name,
+            '--database-name', database_name,
+            '--resource-group', resource_group
+        ]
+    elif binding_type == SERVICE_BINDING_TYPE[2]:
+        parameters = [
+            'spring-cloud', 'app', 'binding', 'mysql', 'add',
+            '--name', binding_name,
+            '--app', app_name,
+            '--database-name', database_name,
+            '--key', key,
+            '--username', username,
+            '--resource-id', resource_id,
+            '--resource-group', resource_group
+        ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to bind %s to App %s.' % (resource_id, app_name))
     # restart app
@@ -117,16 +128,25 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to restart App %s.' % app_name)
     # check app status
-    wait = 30
-    print('Waiting %d seconds for APP instance running up...' % wait)
-    time.sleep(wait)
-    parameters = [
-        'spring-cloud', 'app', 'show',
-        '--name', app_name,
-        '--service', asc_name,
-        '--resource-group', resource_group,
-        '--output', 'none'
-    ]
-    if DEFAULT_CLI.invoke(parameters):
-        raise CLIError('Fail to show App %s status.' % app_name)
+    print("Polling App %s status..." % app_name)
+    timeout = 10
+    wait = 15
+    f = open(os.devnull, 'w')
+    while timeout > 0:
+        parameters = [
+            'spring-cloud', 'app', 'show',
+            '--name', app_name,
+            '--service', asc_name,
+            '--resource-group', resource_group
+        ]
+        if DEFAULT_CLI.invoke(parameters, out_file=f):
+            raise CLIError('Fail to show App %s status.' % app_name)
+        if DEFAULT_CLI.result.result['properties']['activeDeployment']['properties']['status'] == 'Running':
+            print('App %s running up.' % app_name)
+            break
+        timeout -= 1
+        print('Wait %d seconds...' % wait)
+        time.sleep(wait)
+    if timeout <= 0:
+        raise CLIError('Timeout polling App instance %s status for running up.' % app_name)
     print('App url: %s' % DEFAULT_CLI.result.result['properties']['url'])
