@@ -55,7 +55,7 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
         para_list = para_list + 'webapp:' + webapp + ' '
     if sql:
         service_list.append(SERVICE_MAP['sql'])
-        para_list = para_list + 'server:' + sql +' msi:1 '
+        para_list = para_list + 'sql:' + sql +' msi:1 '
         para_list = interaction('database', para_list)
         para_list = interaction('aad-user', para_list)
         connection_type = connection_type + 'Managaed Identity (MSI)'
@@ -78,7 +78,7 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
     deploy(service_list, resource_group, para_dict)
-    print('Service %s connected via %s.' %(' and '.join([s[1] for s in service_list]), connection_type))
+    print('Service %s connected via %s.' %(' and '.join([s[1] + ':' + para_dict[s[0]] for s in service_list]), connection_type))
     print('To test connection, either run \'az connect test\' or follow %s.' % url)
 
 def interaction(display_name, para_list):
@@ -142,10 +142,10 @@ def validate(service):
 
 
 def check_resource(service_list, resource_group):
-    print('Resource Group %s already exists.' % resource_group)
+    # print('Resource Group %s already exists.' % resource_group)
     print('Connecting %s in resource group %s.' % (', '.join([s[1] for s in service_list]), resource_group))
-    for s in service_list:
-        print('Resource %s already exists.' % s[1])
+    # for s in service_list:
+    #     print('Resource %s already exists.' % s[1])
 
 
 def deploy(service_list, resource_group, para_dict):
@@ -224,7 +224,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     raise CLIError('Fail to create resource %s' % sql)
         # save connection string
         if 'msi' not in para_dict:
-            connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['database'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
+            connection_string = "Server=tcp:" + para_dict['sql'] + ".database.windows.net,1433;Database=" + para_dict['database'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
             settings['MyDbConnection'] = connection_string
             print('Connection string of %s: %s' % (para_dict['database'], connection_string))
         else:
@@ -236,7 +236,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             ]
             DEFAULT_CLI.invoke(parameters)
             statement = "CREATE USER [" + para_dict['webapp'] + "] FROM EXTERNAL PROVIDER; ALTER ROLE db_datareader ADD MEMBER [" + para_dict['webapp'] + "]; ALTER ROLE db_datawriter ADD MEMBER [" + para_dict['webapp'] + "]; ALTER ROLE db_ddladmin ADD MEMBER [" + para_dict['webapp'] + "];"
-            server = para_dict['server'] + ".database.windows.net"
+            server = para_dict['sql'] + ".database.windows.net"
             subprocess.call(["sqlcmd", "-S", server, "-d", para_dict['database'], "-U", para_dict['aad-user'], "-G", "-l", "30", '-Q', statement])
     
     elif service[0] == 'webapp':
