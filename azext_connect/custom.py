@@ -34,7 +34,8 @@ DEFAULT_CLI = get_default_cli()
 #     # print(para_dict)
 #     deploy(service_list, resource_group, para_dict)
 
-def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
+def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
+            mysql = None, asc = None, ascapp = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
     service_list = []
@@ -59,41 +60,70 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
         para_list = interaction('aad-user', para_list)
         connection_type = connection_type + 'Managaed Identity (MSI)'
         url = url + 'https://aka.ms/AA866zi'
+    if mysql:
+        service_list.append(SERVICE_MAP['mysql'])
+        para_list = para_list + 'mysql_server_name:' + mysql + ' '
+        para_list = interaction('admin_user', para_list)
+        para_list = interaction('admin_password', para_list)
+        para_list = interaction('database_name', para_list)
+        connection_type = connection_type + 'Service Binding'
+        url = url + 'https://aka.ms/AA877da'
+    if asc:
+        service_list.append(SERVICE_MAP['spring-cloud'])
+        para_list = para_list + 'asc_name:' + asc + ' '
+        if not ascapp:
+            raise CLIError('Need to input ASC App name using --ascapp.')
+        para_list = para_list + 'app_name:' + ascapp + ' '
     service_list.sort(key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
     deploy(service_list, resource_group, para_dict)
-    print('Service %s connected via %s.' %((' and '.join([s[1] for s in service_list])), connection_type))
+    print('Service %s connected via %s.' %(' and '.join([s[1] for s in service_list]), connection_type))
     print('To test connection, either run \'az connect test\' or follow %s.' % url)
 
 def interaction(display_name, para_list):
-    print("Please input the %s name." %display_name)
-    para = input("%s name: " % display_name)
+    para = input("%s: " % display_name)
     para_list = para_list + display_name + ':' + para + ' '
     return para_list
 
-def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = None):
+def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = None,
+                 mysql = None, asc = None, ascapp = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
-    services = ''
+    services_name = []
     para_list = ''
     service_list = []
     if aks:
         service_list.append(SERVICE_MAP['aks'])
         para_list = para_list + 'aks:' + aks + ' '
+        services_name.append(aks)
     if acr:
         service_list.append(SERVICE_MAP['acr'])
         para_list = para_list + 'acr:' + acr + ' '
+        services_name.append(acr)
     if webapp:
         service_list.append(SERVICE_MAP['webapp'])
         para_list = para_list + 'webapp:' + webapp + ' '
+        services_name.append(webapp)
     if sql:
         service_list.append(SERVICE_MAP['sql'])
         para_list = para_list + 'sql:' + sql + ' '
+        services_name.append(sql)
+    if mysql:
+        service_list.append(SERVICE_MAP['mysql'])
+        para_list = para_list + 'mysql_server_name:' + mysql + ' '
+        services_name.append(mysql)
+    if asc:
+        service_list.append(SERVICE_MAP['spring-cloud'])
+        if not ascapp:
+            raise CLIError('Need to input ASC App name using --ascapp.')
+        para_list = para_list + 'asc_name:' + asc + ' '
+        para_list = para_list + 'app_name:' + ascapp + ' '
+        services_name.append(ascapp)
     service_list.sort(key=lambda x: x[2])
     para_dict = parseParameter(para_list)
-    print('Resource Group %s service: %s' % (resource_group, (', '.join([para_dict[s[0]]for s in service_list]))))
-    print('%s -> %s connected!!' % (para_dict[service_list[0][0]], para_dict[service_list[1][0]]))
+    print('Resource Group %s services: %s' % (resource_group, ' and '.join([s[0] for s in service_list])))
+    print('%s -> %s connected!!' % (services_name[0], services_name[1]))
 
 def parseParameter(para_list):
     dict = {}
