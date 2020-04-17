@@ -39,20 +39,20 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
     if not resource_group:
         raise CLIError('--resource-group not specified')
     service_list = []
+    services_name = []
     para_list = ''
     connection_type = ''
     url = ''
+    if acr:
+        service_list.append(SERVICE_MAP['acr'])
+        para_list = para_list + 'acr:' + acr + ' '
+        services_name.append(acr)
     if aks:
         service_list.append(SERVICE_MAP['aks'])
         para_list = para_list + 'aks:' + aks + ' '
         connection_type = connection_type + 'Service Principal'
         url = url + 'https://aka.ms/AA861xl'
-    if acr:
-        service_list.append(SERVICE_MAP['acr'])
-        para_list = para_list + 'acr:' + acr + ' '
-    if webapp:
-        service_list.append(SERVICE_MAP['webapp'])
-        para_list = para_list + 'webapp:' + webapp + ' '
+        services_name.append(aks)
     if sql:
         service_list.append(SERVICE_MAP['sql'])
         para_list = para_list + 'sql:' + sql +' msi:1 '
@@ -60,6 +60,11 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
         para_list = interaction('aad-user', para_list)
         connection_type = connection_type + 'Managaed Identity (MSI)'
         url = url + 'https://aka.ms/AA866zi'
+        services_name.append(sql)
+    if webapp:
+        service_list.append(SERVICE_MAP['webapp'])
+        para_list = para_list + 'webapp:' + webapp + ' '
+        services_name.append(webapp)
     if mysql:
         service_list.append(SERVICE_MAP['mysql'])
         para_list = para_list + 'mysql_server_name:' + mysql + ' '
@@ -68,17 +73,20 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
         para_list = interaction('database_name', para_list)
         connection_type = connection_type + 'Service Binding'
         url = url + 'https://aka.ms/AA877da'
+        services_name.append(mysql)
     if asc:
         service_list.append(SERVICE_MAP['spring-cloud'])
         para_list = para_list + 'asc_name:' + asc + ' '
         if not ascapp:
             raise CLIError('Need to input ASC App name using --ascapp.')
         para_list = para_list + 'app_name:' + ascapp + ' '
+        services_name.append(asc)
     service_list.sort(key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
     deploy(service_list, resource_group, para_dict)
-    print('Service %s connected via %s.' %(' and '.join([s[1] + ':' + para_dict[s[0]] for s in service_list]), connection_type))
+    # print('Service %s connected via %s.' %(' and '.join([s[1] + ':' + para_dict[s[0]] for s in service_list]), connection_type))
+    print('Serivce %s:%s and %s:%s connected via %s' %(service_list[0][1], services_name[0], service_list[1][1], services_name[1], connection_type))
     print('To test connection, either run \'az connect test\' or follow %s.' % url)
 
 def interaction(display_name, para_list):
@@ -93,14 +101,14 @@ def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = No
     services_name = []
     para_list = ''
     service_list = []
-    if aks:
-        service_list.append(SERVICE_MAP['aks'])
-        para_list = para_list + 'aks:' + aks + ' '
-        services_name.append(aks)
     if acr:
         service_list.append(SERVICE_MAP['acr'])
         para_list = para_list + 'acr:' + acr + ' '
         services_name.append(acr)
+    if aks:
+        service_list.append(SERVICE_MAP['aks'])
+        para_list = para_list + 'aks:' + aks + ' '
+        services_name.append(aks)
     if webapp:
         service_list.append(SERVICE_MAP['webapp'])
         para_list = para_list + 'webapp:' + webapp + ' '
