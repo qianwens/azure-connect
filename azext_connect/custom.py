@@ -8,6 +8,7 @@ from azure.cli.core import get_default_cli
 import random
 import time
 from ._cosmosdb import cosmosdb_handler
+from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 import subprocess
 
@@ -18,7 +19,8 @@ SERVICE_MAP = {
     'acr': ('acr', 'Azure Container Registry', 4),
     'aks': ('aks', 'Azure Kubernetes Service', 5),
     'cosmosdb': ('cosmosdb', 'Azure CosmosDB Service', 6),
-    'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 7)
+    'mysql': ('mysql', 'Azure Database for MySQL', 7),
+    'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 8)
 }
 DEFAULT_CLI = get_default_cli()
 
@@ -41,33 +43,34 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
     url = ''
     if aks:
         service_list.append(SERVICE_MAP['aks'])
-        para_list = para_list + 'aks_name:' + aks + ' '
+        para_list = para_list + 'aks:' + aks + ' '
         connection_type = connection_type + 'Service Principal'
         url = url + 'https://aka.ms/AA861xl'
     if acr:
         service_list.append(SERVICE_MAP['acr'])
-        para_list = para_list + 'acr_name:' + acr + ' '
+        para_list = para_list + 'acr:' + acr + ' '
     if webapp:
         service_list.append(SERVICE_MAP['webapp'])
-        para_list = para_list + 'app_name:' + webapp + ' '
+        para_list = para_list + 'webapp:' + webapp + ' '
     if sql:
         service_list.append(SERVICE_MAP['sql'])
-        para_list = para_list + 'server:' + sql + ' '
-        print("Please input the database name.")
-        db = input("DB name:")
-        print("Please input the aad user name.")
-        aad = input("aad user name:")
-        para_list = para_list + 'sql:' + db + ' aad-user-name:' + aad + " msi:1"
+        para_list = para_list + 'server:' + sql +' msi:1 '
+        para_list = interaction('database', para_list)
+        para_list = interaction('aad-user', para_list)
         connection_type = connection_type + 'Managaed Identity (MSI)'
         url = url + 'https://aka.ms/AA866zi'
-    print(para_list)
     service_list.sort(key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
     deploy(service_list, resource_group, para_dict)
     print('Service %s connected via %s.' %((' and '.join([s[1] for s in service_list])), connection_type))
     print('To test connection, either run \'az connect test\' or follow %s.' % url)
-    
+
+def interaction(display_name, para_list):
+    print("Please input the %s name." %display_name)
+    para = input("%s name: " % display_name)
+    para_list = para_list + display_name + ':' + para + ' '
+    return para_list
 
 def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = None):
     if not resource_group:
@@ -191,22 +194,20 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     raise CLIError('Fail to create resource %s' % sql)
         # save connection string
         if 'msi' not in para_dict:
-            connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['sql'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
+            connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['database'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
             settings['MyDbConnection'] = connection_string
-            print('Connection string of %s: %s' % (para_dict['sql'], connection_string))
+            print('Connection string of %s: %s' % (para_dict['database'], connection_string))
         else:
-            print("Using MSI to connect Webapp and SQL.")
             parameters = [
                 'webapp', 'identity', 'assign',
                 '--resource-group', resource_group,
-                '--name', para_dict['app_name'],
+                '--name', para_dict['webapp'],
                 '--output', 'none'
             ]
             DEFAULT_CLI.invoke(parameters)
-            print('Running SQL commands.')
-            statement = "CREATE USER [" + para_dict['app_name'] + "] FROM EXTERNAL PROVIDER; ALTER ROLE db_datareader ADD MEMBER [" + para_dict['app_name'] + "]; ALTER ROLE db_datawriter ADD MEMBER [" + para_dict['app_name'] + "]; ALTER ROLE db_ddladmin ADD MEMBER [" + para_dict['app_name'] + "];"
+            statement = "CREATE USER [" + para_dict['webapp'] + "] FROM EXTERNAL PROVIDER; ALTER ROLE db_datareader ADD MEMBER [" + para_dict['webapp'] + "]; ALTER ROLE db_datawriter ADD MEMBER [" + para_dict['webapp'] + "]; ALTER ROLE db_ddladmin ADD MEMBER [" + para_dict['webapp'] + "];"
             server = para_dict['server'] + ".database.windows.net"
-            subprocess.call(["sqlcmd", "-S", server, "-d", para_dict['sql'], "-U", para_dict['aad-user-name'], "-G", "-l", "30", '-Q', statement])
+            subprocess.call(["sqlcmd", "-S", server, "-d", para_dict['database'], "-U", para_dict['aad-user'], "-G", "-l", "30", '-Q', statement])
     
     elif service[0] == 'webapp':
         # create App Service plan
@@ -260,7 +261,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             print("Using connection-string to connect Webapp and SQL.")
             parameters = [
                 'webapp', 'config', 'connection-string', 'set',
-                '--name', para_dict['app_name'],
+                '--name', para_dict['webapp'],
                 '--resource-group', resource_group,
                 '--connection-string-type', 'SQLServer',
                 '--settings',
@@ -271,7 +272,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             DEFAULT_CLI.invoke(parameters)
             parameters = [
                 'webapp', 'config', 'appsettings', 'set',
-                '--name', para_dict['app_name'],
+                '--name', para_dict['webapp'],
                 '--resource-group', resource_group,
                 '--settings', 'ASPNETCORE_ENVIRONMENT=Production',
                 '--output', 'none'
@@ -281,7 +282,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     print("Deploy to Webapp.")
         #     parameters = [
         #         'webapp', 'deployment', 'source', 'config',
-        #         '-n', para_dict['app_name'],
+        #         '-n', para_dict['webapp'],
         #         '-g', resource_group,
         #         '--repo-url', "https://github.com/KennethBWSong/dotnetcore-sqldb-tutorial.git",
         #         '--branch', 'msi',
@@ -290,16 +291,16 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     DEFAULT_CLI.invoke(parameters)
 
     elif service[0] == 'aks':
-        parameters = [
-            'aks', 'show', 
-            '--resource-group', resource_group,
-            '--name', para_dict['aks_name'],
-            '--query', 'servicePrincipalProfile.clientId',
-            '--output', 'none'
-        ]
-        DEFAULT_CLI.invoke(parameters)
-        sp_id = DEFAULT_CLI.result.result
-        print('Service Principal id: %s' % sp_id)
+        # parameters = [
+        #     'aks', 'show', 
+        #     '--resource-group', resource_group,
+        #     '--name', para_dict['aks'],
+        #     '--query', 'servicePrincipalProfile.clientId',
+        #     '--output', 'none'
+        # ]
+        # DEFAULT_CLI.invoke(parameters)
+        # sp_id = DEFAULT_CLI.result.result
+        # print('Service Principal id: %s' % sp_id)
         # if 'aks_secret' in para_dict:
         #     sp_password = para_dict['aks_secret']
         #     print('Password of Service Principal %s: %s' % (sp_id, sp_password))
@@ -325,13 +326,15 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     DEFAULT_CLI.invoke(parameters)
         parameters = [
             'aks', 'update', 
-            '-n', para_dict['aks_name'],
+            '-n', para_dict['aks'],
             '-g', resource_group,
-            '--attach-acr', para_dict['acr_name'],
+            '--attach-acr', para_dict['acr'],
             '--output', 'none'
         ]
         DEFAULT_CLI.invoke(parameters)
     elif service[0] == 'cosmosdb':
         cosmosdb_handler(resource_group, deployment_id, settings, para_dict)
+    elif service[0] == 'mysql':
+        mysql_handler(resource_group, deployment_id, settings, para_dict)
     elif service[0] == 'spring-cloud':
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)

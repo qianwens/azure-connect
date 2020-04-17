@@ -43,6 +43,7 @@ def cosmosdb_handler(resource_group, deployment_id, settings, para_dict):
         raise CLIError('Fail to create container %s' % container_name)
     resource_id = "/subscriptions/" + subscription_id + "/resourceGroups/" + resource_group + "/providers/Microsoft.DocumentDB/databaseAccounts/" + cosmosdb_name
     settings['cosmosdb_resource_id'] = resource_id
+    settings['binding_type'] = 'Azure Cosmos DB'
     settings['database_name'] = database_name
     print('CosmosDB %s database %s is ready.' % (cosmosdb_name, database_name))
 

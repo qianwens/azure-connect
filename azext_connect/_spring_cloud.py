@@ -1,17 +1,32 @@
 from knack.util import CLIError
 from azure.cli.core import get_default_cli
 import time
+import os
+import sys
 
 DEFAULT_CLI = get_default_cli()
+
+SERVICE_BINDING_TYPE = [
+    'Azure Cosmos DB',
+    'Azure Cache for Redis',
+    'Azure Database for MySQL'
+]
 
 def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
     # parse the parameter
     asc_name = para_dict['asc_name']
     app_name = para_dict['app_name']
-    binding_name = para_dict['binding_name']
     jar_path = para_dict['jar_path']
-    resource_id = settings['cosmosdb_resource_id']
-    database_name = settings['database_name']
+    binding_name = para_dict['binding_name']
+    binding_type = settings['binding_type']
+    if binding_type == SERVICE_BINDING_TYPE[0]:
+        resource_id = settings['cosmosdb_resource_id']
+        database_name = settings['database_name']
+    elif binding_type == SERVICE_BINDING_TYPE[2]:
+        username = settings['username']
+        key = settings['key']
+        resource_id = settings['mysql_resource_id']
+        database_name = settings['database_name']
     # check azure spring-cloud service
     parameters = [
         'spring-cloud', 'show',
@@ -19,8 +34,17 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         '--name', asc_name,
         '--output', 'none'
     ]
-    if DEFAULT_CLI.invoke(parameters):
-        raise CLIError('Azure Spring Cloud service %s does not exist, please create it and retry the command.' % asc_name)
+    try:
+        DEFAULT_CLI.invoke(parameters)
+    except:
+        # not exists, create a new one
+        parameters = [
+            'spring-cloud', 'create',
+            '--name', asc_name,
+            '--resource-group', resource_group
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create Azure Spring Cloud service %s.' % asc_name)
     # create app
     # check if app exists
     parameters = [
@@ -30,7 +54,9 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         '--resource-group', resource_group,
         '--output', 'none'
     ]
-    if DEFAULT_CLI.invoke(parameters):
+    try:
+        DEFAULT_CLI.invoke(parameters)
+    except:
         print('App %s does not exists, creating it...' % app_name)
         parameters = [
             'spring-cloud', 'app', 'create',
@@ -43,8 +69,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to crreat App %s for Azure Spring Cloud %s.' % (app_name, asc_name))
-    else:
-        print('App %s already exists.' % app_name)
+    finally:
+        print('App %s created.' % app_name)
         parameters = [
             'spring-cloud', 'app', 'update',
             '--name', app_name,
