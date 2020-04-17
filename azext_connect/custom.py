@@ -10,6 +10,7 @@ import time
 from ._cosmosdb import cosmosdb_handler
 from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
+import subprocess
 
 SERVICE_MAP = {
     'signalr': ('signalr', 'Azure SignalR Service', 1),
@@ -24,14 +25,75 @@ SERVICE_MAP = {
 DEFAULT_CLI = get_default_cli()
 
 
-def connect(service, resource_group, para_list):
+# def connect(service, resource_group, para_list):
+#     if not resource_group:
+#         raise CLIError('--resource-group not specified')
+#     service_list = validate(service)
+#     check_resource(service_list, resource_group)
+#     para_dict = parseParameter(para_list)
+#     # print(para_dict)
+#     deploy(service_list, resource_group, para_dict)
+
+def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
     if not resource_group:
         raise CLIError('--resource-group not specified')
-    service_list = validate(service)
+    service_list = []
+    para_list = ''
+    connection_type = ''
+    url = ''
+    if aks:
+        service_list.append(SERVICE_MAP['aks'])
+        para_list = para_list + 'aks:' + aks + ' '
+        connection_type = connection_type + 'Service Principal'
+        url = url + 'https://aka.ms/AA861xl'
+    if acr:
+        service_list.append(SERVICE_MAP['acr'])
+        para_list = para_list + 'acr:' + acr + ' '
+    if webapp:
+        service_list.append(SERVICE_MAP['webapp'])
+        para_list = para_list + 'webapp:' + webapp + ' '
+    if sql:
+        service_list.append(SERVICE_MAP['sql'])
+        para_list = para_list + 'server:' + sql +' msi:1 '
+        para_list = interaction('database', para_list)
+        para_list = interaction('aad-user', para_list)
+        connection_type = connection_type + 'Managaed Identity (MSI)'
+        url = url + 'https://aka.ms/AA866zi'
+    service_list.sort(key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
-    # print(para_dict)
     deploy(service_list, resource_group, para_dict)
+    print('Service %s connected via %s.' %((' and '.join([s[1] for s in service_list])), connection_type))
+    print('To test connection, either run \'az connect test\' or follow %s.' % url)
+
+def interaction(display_name, para_list):
+    print("Please input the %s name." %display_name)
+    para = input("%s name: " % display_name)
+    para_list = para_list + display_name + ':' + para + ' '
+    return para_list
+
+def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = None):
+    if not resource_group:
+        raise CLIError('--resource-group not specified')
+    services = ''
+    para_list = ''
+    service_list = []
+    if aks:
+        service_list.append(SERVICE_MAP['aks'])
+        para_list = para_list + 'aks:' + aks + ' '
+    if acr:
+        service_list.append(SERVICE_MAP['acr'])
+        para_list = para_list + 'acr:' + acr + ' '
+    if webapp:
+        service_list.append(SERVICE_MAP['webapp'])
+        para_list = para_list + 'webapp:' + webapp + ' '
+    if sql:
+        service_list.append(SERVICE_MAP['sql'])
+        para_list = para_list + 'sql:' + sql + ' '
+    service_list.sort(key=lambda x: x[2])
+    para_dict = parseParameter(para_list)
+    print('Resource Group %s service: %s' % (resource_group, (', '.join([para_dict[s[0]]for s in service_list]))))
+    print('%s -> %s connected!!' % (para_dict[service_list[0][0]], para_dict[service_list[1][0]]))
 
 def parseParameter(para_list):
     dict = {}
@@ -79,7 +141,8 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             '--resource-group', resource_group,
             '--sku', 'Standard_S1',
             '--unit-count', '1',
-            '--service-mode', 'Default'
+            '--service-mode', 'Default',
+            '--output', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % resource_name)
@@ -89,7 +152,8 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             '--name', resource_name,
             '--resource-group', resource_group,
             '--query', 'primaryConnectionString',
-            '-o', 'tsv'
+            '-o', 'tsv',
+            '--output', 'none'
         ]
         DEFAULT_CLI.invoke(parameters)
         connection_string = DEFAULT_CLI.result.result
@@ -129,9 +193,21 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         # if DEFAULT_CLI.invoke(parameters):
         #     raise CLIError('Fail to create resource %s' % sql)
         # save connection string
-        connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['sql'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
-        settings['MyDbConnection'] = connection_string
-        print('Connection string of %s: %s' % (para_dict['sql'], connection_string))
+        if 'msi' not in para_dict:
+            connection_string = "Server=tcp:" + para_dict['server'] + ".database.windows.net,1433;Database=" + para_dict['database'] + ";User ID=" + para_dict['username'] + ";Password=" + para_dict['password'] + ";Encrypt=true;Connection Timeout=30;"
+            settings['MyDbConnection'] = connection_string
+            print('Connection string of %s: %s' % (para_dict['database'], connection_string))
+        else:
+            parameters = [
+                'webapp', 'identity', 'assign',
+                '--resource-group', resource_group,
+                '--name', para_dict['webapp'],
+                '--output', 'none'
+            ]
+            DEFAULT_CLI.invoke(parameters)
+            statement = "CREATE USER [" + para_dict['webapp'] + "] FROM EXTERNAL PROVIDER; ALTER ROLE db_datareader ADD MEMBER [" + para_dict['webapp'] + "]; ALTER ROLE db_datawriter ADD MEMBER [" + para_dict['webapp'] + "]; ALTER ROLE db_ddladmin ADD MEMBER [" + para_dict['webapp'] + "];"
+            server = para_dict['server'] + ".database.windows.net"
+            subprocess.call(["sqlcmd", "-S", server, "-d", para_dict['database'], "-U", para_dict['aad-user'], "-G", "-l", "30", '-Q', statement])
     
     elif service[0] == 'webapp':
         # create App Service plan
@@ -181,34 +257,50 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         # ]
         # DEFAULT_CLI.invoke(parameters)
         # print('App url: http://%s.azurewebsites.net/' % resource_name)
-        parameters = [
-            'webapp', 'config', 'connection-string', 'set',
-            '--name', para_dict['app_name'],
-            '--resource-group', resource_group,
-            '--connection-string-type', 'SQLServer',
-            '--settings'
-        ]
-        for k, v in settings.items():
-            parameters.append('%s=%s' % (k, v))
-        DEFAULT_CLI.invoke(parameters)
-        parameters = [
-            'webapp', 'config', 'appsettings', 'set',
-            '--name', para_dict['app_name'],
-            '--resource-group', resource_group,
-            '--settings', 'ASPNETCORE_ENVIRONMENT=Production'
-        ]
-        DEFAULT_CLI.invoke(parameters)
+        if 'msi' not in para_dict:
+            print("Using connection-string to connect Webapp and SQL.")
+            parameters = [
+                'webapp', 'config', 'connection-string', 'set',
+                '--name', para_dict['webapp'],
+                '--resource-group', resource_group,
+                '--connection-string-type', 'SQLServer',
+                '--settings',
+                '--output', 'none'
+            ]
+            for k, v in settings.items():
+                parameters.append('%s=%s' % (k, v))
+            DEFAULT_CLI.invoke(parameters)
+            parameters = [
+                'webapp', 'config', 'appsettings', 'set',
+                '--name', para_dict['webapp'],
+                '--resource-group', resource_group,
+                '--settings', 'ASPNETCORE_ENVIRONMENT=Production',
+                '--output', 'none'
+            ]
+            DEFAULT_CLI.invoke(parameters)
+        # else:
+        #     print("Deploy to Webapp.")
+        #     parameters = [
+        #         'webapp', 'deployment', 'source', 'config',
+        #         '-n', para_dict['webapp'],
+        #         '-g', resource_group,
+        #         '--repo-url', "https://github.com/KennethBWSong/dotnetcore-sqldb-tutorial.git",
+        #         '--branch', 'msi',
+        #         '--manual-integration'
+        #     ]
+        #     DEFAULT_CLI.invoke(parameters)
 
     elif service[0] == 'aks':
-        parameters = [
-        'aks', 'show', 
-        '--resource-group', resource_group,
-        '--name', para_dict['aks_name'],
-        '--query', 'servicePrincipalProfile.clientId'
-        ]
-        DEFAULT_CLI.invoke(parameters)
-        sp_id = DEFAULT_CLI.result.result
-        print('Service Principal id: %s' % sp_id)
+        # parameters = [
+        #     'aks', 'show', 
+        #     '--resource-group', resource_group,
+        #     '--name', para_dict['aks'],
+        #     '--query', 'servicePrincipalProfile.clientId',
+        #     '--output', 'none'
+        # ]
+        # DEFAULT_CLI.invoke(parameters)
+        # sp_id = DEFAULT_CLI.result.result
+        # print('Service Principal id: %s' % sp_id)
         # if 'aks_secret' in para_dict:
         #     sp_password = para_dict['aks_secret']
         #     print('Password of Service Principal %s: %s' % (sp_id, sp_password))
@@ -233,10 +325,11 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     ]
         #     DEFAULT_CLI.invoke(parameters)
         parameters = [
-        'aks', 'update', 
-        '-n', para_dict['aks_name'],
-        '-g', resource_group,
-        '--attach-acr', para_dict['acr_name']
+            'aks', 'update', 
+            '-n', para_dict['aks'],
+            '-g', resource_group,
+            '--attach-acr', para_dict['acr'],
+            '--output', 'none'
         ]
         DEFAULT_CLI.invoke(parameters)
     elif service[0] == 'cosmosdb':
