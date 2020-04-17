@@ -11,6 +11,7 @@ from ._cosmosdb import cosmosdb_handler
 from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 import subprocess
+from getpass import getpass
 
 SERVICE_MAP = {
     'signalr': ('signalr', 'Azure SignalR Service', 1),
@@ -69,7 +70,7 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
         service_list.append(SERVICE_MAP['mysql'])
         para_list = para_list + 'mysql_server_name:' + mysql + ' '
         para_list = interaction('admin_user', para_list)
-        para_list = interaction('admin_password', para_list)
+        para_list = interaction('admin_password', para_list, True)
         para_list = interaction('database_name', para_list)
         connection_type = connection_type + 'Service Binding'
         url = url + 'https://aka.ms/AA877da'
@@ -89,8 +90,11 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
     print('Serivce %s:%s and %s:%s connected via %s' %(service_list[0][1], services_name[0], service_list[1][1], services_name[1], connection_type))
     print('To test connection, either run \'az connect test\' or follow %s.' % url)
 
-def interaction(display_name, para_list):
-    para = input("%s: " % display_name)
+def interaction(display_name, para_list, passwd = None):
+    if passwd:
+        para = getpass('%s: ' % display_name)
+    else:
+        para = input("%s: " % display_name)
     para_list = para_list + display_name + ':' + para + ' '
     return para_list
 
