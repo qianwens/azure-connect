@@ -16,7 +16,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
     parameters = [
         'spring-cloud', 'show',
         '--resource-group', resource_group,
-        '--name', asc_name
+        '--name', asc_name,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Azure Spring Cloud service %s does not exist, please create it and retry the command.' % asc_name)
@@ -26,7 +27,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         'spring-cloud', 'app', 'show',
         '--name', app_name,
         '--service', asc_name,
-        '--resource-group', resource_group
+        '--resource-group', resource_group,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         print('App %s does not exists, creating it...' % app_name)
@@ -36,7 +38,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
             '--service', asc_name,
             '--resource-group', resource_group,
             '--runtime-version', 'Java_11',
-            '--is-public', 'true'
+            '--is-public', 'true',
+            '--output', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to crreat App %s for Azure Spring Cloud %s.' % (app_name, asc_name))
@@ -47,7 +50,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
             '--name', app_name,
             '--service', asc_name,
             '--resource-group', resource_group,
-            '--runtime-version', 'Java_11'
+            '--runtime-version', 'Java_11',
+            '--output', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to update App %s configuration.' % app_name)
@@ -57,7 +61,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         '--name', app_name,
         '--service', asc_name,
         '--resource-group', resource_group,
-        '--jar-path', jar_path
+        '--jar-path', jar_path,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to deploy jar file %s to App %s.' % (jar_path, app_name))
@@ -70,7 +75,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         '--resource-id', resource_id,
         '--service', asc_name,
         '--database-name', database_name,
-        '--resource-group', resource_group
+        '--resource-group', resource_group,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to bind %s to App %s.' % (resource_id, app_name))
@@ -79,7 +85,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         'spring-cloud', 'app', 'restart',
         '--name', app_name,
         '--service', asc_name,
-        '--resource-group', resource_group
+        '--resource-group', resource_group,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to restart App %s.' % app_name)
@@ -91,7 +98,8 @@ def spring_cloud_handler(resource_group, deployment_id, settings, para_dict):
         'spring-cloud', 'app', 'show',
         '--name', app_name,
         '--service', asc_name,
-        '--resource-group', resource_group
+        '--resource-group', resource_group,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to show App %s status.' % app_name)

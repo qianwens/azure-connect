@@ -37,9 +37,13 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
         raise CLIError('--resource-group not specified')
     service_list = []
     para_list = ''
+    connection_type = ''
+    url = ''
     if aks:
         service_list.append(SERVICE_MAP['aks'])
         para_list = para_list + 'aks_name:' + aks + ' '
+        connection_type = connection_type + 'Service Principal'
+        url = url + 'https://aka.ms/AA861xl'
     if acr:
         service_list.append(SERVICE_MAP['acr'])
         para_list = para_list + 'acr_name:' + acr + ' '
@@ -54,11 +58,15 @@ def connect(resource_group, aks = None, acr = None, webapp = None, sql = None):
         print("Please input the aad user name.")
         aad = input("aad user name:")
         para_list = para_list + 'sql:' + db + ' aad-user-name:' + aad + " msi:1"
+        connection_type = connection_type + 'Managaed Identity (MSI)'
+        url = url + 'https://aka.ms/AA866zi'
     print(para_list)
     service_list.sort(key=lambda x: x[2])
     check_resource(service_list, resource_group)
     para_dict = parseParameter(para_list)
     deploy(service_list, resource_group, para_dict)
+    print('Service %s connected via %s.' %((' and '.join([s[1] for s in service_list])), connection_type))
+    print('To test connection, either run \'az connect test\' or follow %s.' % url)
     
 
 def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = None):
@@ -68,25 +76,20 @@ def connect_test(resource_group, aks = None, acr = None, webapp = None, sql = No
     para_list = ''
     service_list = []
     if aks:
-        services = services + aks + ','
         service_list.append(SERVICE_MAP['aks'])
         para_list = para_list + 'aks:' + aks + ' '
     if acr:
-        services = services + acr + ','
         service_list.append(SERVICE_MAP['acr'])
         para_list = para_list + 'acr:' + acr + ' '
     if webapp:
-        services = services + webapp + ','
         service_list.append(SERVICE_MAP['webapp'])
         para_list = para_list + 'webapp:' + webapp + ' '
     if sql:
-        services = services + sql + ','
         service_list.append(SERVICE_MAP['sql'])
         para_list = para_list + 'sql:' + sql + ' '
     service_list.sort(key=lambda x: x[2])
     para_dict = parseParameter(para_list)
-    print('Resource Group %s service: %s' % (resource_group, services))
-    # print(service_list[0][0])
+    print('Resource Group %s service: %s' % (resource_group, (', '.join([para_dict[s[0]]for s in service_list]))))
     print('%s -> %s connected!!' % (para_dict[service_list[0][0]], para_dict[service_list[1][0]]))
 
 def parseParameter(para_list):
@@ -135,7 +138,8 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             '--resource-group', resource_group,
             '--sku', 'Standard_S1',
             '--unit-count', '1',
-            '--service-mode', 'Default'
+            '--service-mode', 'Default',
+            '--output', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % resource_name)
@@ -145,7 +149,8 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             '--name', resource_name,
             '--resource-group', resource_group,
             '--query', 'primaryConnectionString',
-            '-o', 'tsv'
+            '-o', 'tsv',
+            '--output', 'none'
         ]
         DEFAULT_CLI.invoke(parameters)
         connection_string = DEFAULT_CLI.result.result
@@ -194,7 +199,8 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
             parameters = [
                 'webapp', 'identity', 'assign',
                 '--resource-group', resource_group,
-                '--name', para_dict['app_name']
+                '--name', para_dict['app_name'],
+                '--output', 'none'
             ]
             DEFAULT_CLI.invoke(parameters)
             print('Running SQL commands.')
@@ -257,7 +263,8 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
                 '--name', para_dict['app_name'],
                 '--resource-group', resource_group,
                 '--connection-string-type', 'SQLServer',
-                '--settings'
+                '--settings',
+                '--output', 'none'
             ]
             for k, v in settings.items():
                 parameters.append('%s=%s' % (k, v))
@@ -266,27 +273,29 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
                 'webapp', 'config', 'appsettings', 'set',
                 '--name', para_dict['app_name'],
                 '--resource-group', resource_group,
-                '--settings', 'ASPNETCORE_ENVIRONMENT=Production'
+                '--settings', 'ASPNETCORE_ENVIRONMENT=Production',
+                '--output', 'none'
             ]
             DEFAULT_CLI.invoke(parameters)
-        else:
-            print("Deploy to Webapp.")
-            parameters = [
-                'webapp', 'deployment', 'source', 'config',
-                '-n', para_dict['app_name'],
-                '-g', resource_group,
-                '--repo-url', "https://github.com/KennethBWSong/dotnetcore-sqldb-tutorial.git",
-                '--branch', 'msi',
-                '--manual-integration'
-            ]
-            DEFAULT_CLI.invoke(parameters)
+        # else:
+        #     print("Deploy to Webapp.")
+        #     parameters = [
+        #         'webapp', 'deployment', 'source', 'config',
+        #         '-n', para_dict['app_name'],
+        #         '-g', resource_group,
+        #         '--repo-url', "https://github.com/KennethBWSong/dotnetcore-sqldb-tutorial.git",
+        #         '--branch', 'msi',
+        #         '--manual-integration'
+        #     ]
+        #     DEFAULT_CLI.invoke(parameters)
 
     elif service[0] == 'aks':
         parameters = [
-        'aks', 'show', 
-        '--resource-group', resource_group,
-        '--name', para_dict['aks_name'],
-        '--query', 'servicePrincipalProfile.clientId'
+            'aks', 'show', 
+            '--resource-group', resource_group,
+            '--name', para_dict['aks_name'],
+            '--query', 'servicePrincipalProfile.clientId',
+            '--output', 'none'
         ]
         DEFAULT_CLI.invoke(parameters)
         sp_id = DEFAULT_CLI.result.result
@@ -315,10 +324,11 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         #     ]
         #     DEFAULT_CLI.invoke(parameters)
         parameters = [
-        'aks', 'update', 
-        '-n', para_dict['aks_name'],
-        '-g', resource_group,
-        '--attach-acr', para_dict['acr_name']
+            'aks', 'update', 
+            '-n', para_dict['aks_name'],
+            '-g', resource_group,
+            '--attach-acr', para_dict['acr_name'],
+            '--output', 'none'
         ]
         DEFAULT_CLI.invoke(parameters)
     elif service[0] == 'cosmosdb':

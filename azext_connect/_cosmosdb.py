@@ -13,7 +13,8 @@ def cosmosdb_handler(resource_group, deployment_id, settings, para_dict):
     # check if cosmosdb account exists
     parameters = [
         'cosmosdb', 'check-name-exists',
-        '--name', cosmosdb_name
+        '--name', cosmosdb_name,
+        '--output', 'none'
     ]
     DEFAULT_CLI.invoke(parameters)
     if DEFAULT_CLI.result.result == 'false':
@@ -24,7 +25,8 @@ def cosmosdb_handler(resource_group, deployment_id, settings, para_dict):
         'cosmosdb', 'sql', 'database', 'create',
         '--account-name', cosmosdb_name,
         '--name', database_name,
-        '--resource-group', resource_group
+        '--resource-group', resource_group,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to create database %s' % database_name)
@@ -34,7 +36,8 @@ def cosmosdb_handler(resource_group, deployment_id, settings, para_dict):
         '--account-name', cosmosdb_name,
         '--database-name', database_name,
         '--name', container_name,
-        '--partition-key-path', partition_key_path
+        '--partition-key-path', partition_key_path,
+        '--output', 'none'
     ]
     if DEFAULT_CLI.invoke(parameters):
         raise CLIError('Fail to create container %s' % container_name)
