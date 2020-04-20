@@ -25,16 +25,6 @@ SERVICE_MAP = {
 }
 DEFAULT_CLI = get_default_cli()
 
-
-# def connect(service, resource_group, para_list):
-#     if not resource_group:
-#         raise CLIError('--resource-group not specified')
-#     service_list = validate(service)
-#     check_resource(service_list, resource_group)
-#     para_dict = parseParameter(para_list)
-#     # print(para_dict)
-#     deploy(service_list, resource_group, para_dict)
-
 def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
             mysql = None, asc = None, ascapp = None):
     if not resource_group:

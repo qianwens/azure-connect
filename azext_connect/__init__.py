@@ -4,7 +4,9 @@
 # --------------------------------------------------------------------------------------------
 
 from azure.cli.core import AzCommandsLoader
-from knack.help_files import helps
+from ._help import helps
+from .commands import load_command_table
+from ._params import load_arguments
 
 
 helps['connect'] = """
@@ -24,32 +26,12 @@ class ConnectCommandsLoader(AzCommandsLoader):
         super(ConnectCommandsLoader, self).__init__(
             cli_ctx=cli_ctx, custom_command_type=custom_type)
 
-    def load_command_table(self, _):
-        with self.command_group('') as g:
-            g.custom_command('connect', 'connect')
-            g.custom_command('connect test', 'connect_test')
+    def load_command_table(self, args):
+        load_command_table(self,args)
         return self.command_table
 
-    def load_arguments(self, _):
-        with self.argument_context('connect') as c:
-            # c.positional('service', help='Service you want to connect, use space as delimiter for multiple services.')
-            c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resouce group to provision services.')
-            c.argument('ACR', options_list = ['--acr'], help = 'ACR name.')
-            c.argument('AKS', options_list = ['--aks'], help = 'AKS name.')
-            c.argument('webapp', options_list = ['--webapp'], help = 'Webapp Name')
-            c.argument('sql', options_list = ['--sql'], help = 'SQL Server name')
-            c.argument('mysql', options_list = ['--mysql'], help = 'MySQL Server name')
-            c.argument('ASC', options_list = ['--asc'], help = 'Azure Spring Cloud name')
-            c.argument('ASC App', options_list = ['--ascapp'], help = 'Azure Spring Cloud App name')
-        with self.argument_context('connect test') as c:
-            c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resouce group to provision services.')
-            c.argument('ACR', options_list = ['--acr'], help = 'ACR name.')
-            c.argument('AKS', options_list = ['--aks'], help = 'AKS name.')
-            c.argument('webapp', options_list = ['--webapp'], help = 'Webapp Name')
-            c.argument('sql', options_list = ['--sql'], help = 'SQL Server name')
-            c.argument('mysql', options_list = ['--mysql'], help = 'MySQL Server name')
-            c.argument('ASC', options_list = ['--asc'], help = 'Azure Spring Cloud name')
-            c.argument('ASC App', options_list = ['--ascapp'], help = 'Azure Spring Cloud App name')
+    def load_arguments(self, command):
+        load_arguments(self, command)
 
 
 COMMAND_LOADER_CLS = ConnectCommandsLoader
