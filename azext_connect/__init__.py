@@ -4,7 +4,7 @@
 # --------------------------------------------------------------------------------------------
 
 from azure.cli.core import AzCommandsLoader
-from knack.help_files import helps
+from ._help import helps
 from .commands import load_command_table
 from ._params import load_arguments
 
