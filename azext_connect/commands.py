@@ -4,6 +4,6 @@ def load_command_table(self, _):
         g.custom_command('test', 'connect_test')
 
     with self.command_group('cupertino webapp') as g:
-        g.custom_command('bind', '')
-        g.custom_command('remove', '')
-        g.custom_command('list', '')
+        g.custom_command('bind', 'bind_webapp')
+        # g.custom_command('remove', '')
+        # g.custom_command('list', '')

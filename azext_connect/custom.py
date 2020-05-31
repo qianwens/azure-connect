@@ -8,6 +8,7 @@ from azure.cli.core import get_default_cli
 import random
 import time
 from ._cosmosdb import cosmosdb_handler
+from ._model import AuthType
 from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 import subprocess
@@ -24,6 +25,7 @@ SERVICE_MAP = {
     'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 8)
 }
 DEFAULT_CLI = get_default_cli()
+
 
 def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
             mysql = None, asc = None, ascapp = None):
@@ -370,3 +372,19 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         mysql_handler(resource_group, deployment_id, settings, para_dict)
     elif service[0] == 'spring-cloud':
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
+
+
+def bind_webapp(
+    resrouce_group, name, authtype='MSI',
+    sql=None, database=None, client_id=None,
+    client_secret=None, username=None, password=None
+):
+    print('binding now')
+    if AuthType.has_value(authtype):
+        print('Yes')  
+
+    print(resrouce_group)
+    print(name)
+    print(sql)
+    print(database)
+    print(authtype)

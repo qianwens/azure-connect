@@ -11,7 +11,7 @@
         "program": "${workspaceRoot}/../azure-cli/src/azure-cli/azure/cli/__main__.py",
         "cwd": "${workspaceRoot}",
         "args": [
-            "connect", "services", "-h"
+            "cupertino", "webapp", "bind","-n", "web", "-sql", "s", "-db", "d", "--resrouce-group", "shenwe"
         ],
         "console": "integratedTerminal",
         "debugOptions": [
