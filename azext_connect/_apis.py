@@ -1,9 +1,13 @@
+import os
 import requests
 
 
 class CupertinoApi(object):
     def __init__(self):
-        self._host = ''
+        if os.environ['CONN_HOST'] is not None:
+            self._host = os.environ['CONN_HOST']
+        else:
+            self._host = ''
         self._authtoken = ''
 
     def _prepare_db_authtoken(self):
