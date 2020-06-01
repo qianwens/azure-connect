@@ -7,8 +7,9 @@ from knack.util import CLIError
 from azure.cli.core import get_default_cli
 import random
 import time
+from ._apis import CupertinoApi
 from ._cosmosdb import cosmosdb_handler
-from ._model import AuthType
+from ._model import (AuthType, AuthInfo)
 from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 import subprocess
@@ -375,16 +376,27 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
 
 
 def bind_webapp(
-    resrouce_group, name, authtype='MSI',
+    resource_group, name, authtype='MSI',
     sql=None, database=None, client_id=None,
     client_secret=None, username=None, password=None
 ):
     print('binding now')
-    if AuthType.has_value(authtype):
-        print('Yes')  
-
-    print(resrouce_group)
+    print(resource_group)
     print(name)
     print(sql)
     print(database)
     print(authtype)
+
+    if not AuthType.has_value(authtype):
+        raise Exception('Auth type not supported')
+
+    auth_info = AuthInfo(
+            AuthType(authtype), client_id, client_secret, username, password
+        )
+
+    api = CupertinoApi()
+    source = ''  # Get from webapp
+    target = ''  # Get from sql or other services
+    additional_info = {}
+
+    api.create(source, target, auth_info, additional_info)
