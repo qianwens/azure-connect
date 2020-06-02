@@ -376,7 +376,7 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
 
 
 def bind_webapp(
-    resource_group, name, authtype='MSI',
+    resource_group, name, authtype='MSI', permission=None,
     sql=None, database=None, client_id=None,
     client_secret=None, username=None, password=None
 ):
@@ -386,12 +386,13 @@ def bind_webapp(
     print(sql)
     print(database)
     print(authtype)
+    print(permission)
 
     if not AuthType.has_value(authtype):
         raise Exception('Auth type not supported')
 
     auth_info = AuthInfo(
-            AuthType(authtype), client_id, client_secret, username, password
+            AuthType(authtype), permission, client_id, client_secret, username, password
         )
 
     api = CupertinoApi()

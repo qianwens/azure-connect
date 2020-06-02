@@ -22,6 +22,7 @@ def load_arguments(self, _):
             'authtype', options_list=['--auth-type', '-auth'], help='Auth type could be MSI, SP, Secret',
             arg_type=get_enum_type(AuthType)
         )
+        c.argument('permission', options_list=['--permission', '-per'], help='The permission assigned to the identity or SP')
         c.argument('client_id', options_list=['--client-id', '-cid'], help='Client Id assigned to webapp. Only valid when auth type is SP')
         c.argument('client_secret', options_list=['--client-secret', '-secret'], help='Client secret of the client id. Only valid when auth type is SP')
         c.argument('username', options_list=['--user-name', '-user'], help='User name of the database. Only valid when auth type is secret')

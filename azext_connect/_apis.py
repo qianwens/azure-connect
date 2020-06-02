@@ -4,7 +4,7 @@ import requests
 
 class CupertinoApi(object):
     def __init__(self):
-        if os.environ['CONN_HOST'] is not None:
+        if 'CONN_HOST' in os.environ:
             self._host = os.environ['CONN_HOST']
         else:
             self._host = ''
