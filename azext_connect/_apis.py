@@ -1,14 +1,24 @@
 import os
 import requests
+from azure.cli.core import get_default_cli
 
 
 class CupertinoApi(object):
-    def __init__(self):
+    def __init__(self, authtoken, graphtoken, sqltoken, mysqltoken):
         if 'CONN_HOST' in os.environ:
             self._host = os.environ['CONN_HOST']
         else:
             self._host = ''
-        self._authtoken = ''
+        self._authtoken = authtoken
+        self._graphtoken = graphtoken
+        self._sqltoken = sqltoken
+        self._mysqltoken = mysqltoken
+
+    def _get_authtoken(self):
+        return
+
+    def _get_graphtoken(self):
+        return
 
     def _prepare_db_authtoken(self):
         self._db_authtoken = ''
@@ -23,7 +33,6 @@ class CupertinoApi(object):
         res = requests.put(uri, headers=headers, data=data)
         return res
 
-    def create(self, source, target, auth_info, additional_info=None):
-        # TODO: if necessary call _prepare_db_authtoken
+    def create(self, name, source, target, auth_info, additional_info=None):
         # TODO: call self._put_connection and do error handling
         return

@@ -15,8 +15,9 @@ def load_arguments(self, _):
 
     with self.argument_context('cupertino webapp') as c:
         c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
-        c.argument('name', options_list=['--app-name', '-n'], help='Webapp name')
-        c.argument('sql', options_list=['--sql-name', '-sql'], help='SQL server name in the same resource group or SQL server ID')
+        c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
+        c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
+        c.argument('sql', options_list=['--sql-server', '-sql'], help='SQL server name in the same resource group or SQL server ID')
         c.argument('database', options_list=['--database-name', '-db'], help='Database name')
         c.argument(
             'authtype', options_list=['--auth-type', '-auth'], help='Auth type could be MSI, SP, Secret',

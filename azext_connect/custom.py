@@ -4,7 +4,9 @@
 # --------------------------------------------------------------------------------------------
 
 from knack.util import CLIError
+from azure.cli.command_modules.profile.custom import get_access_token
 from azure.cli.core import get_default_cli
+from azure.cli.core.commands.client_factory import get_subscription_id
 import random
 import time
 from ._apis import CupertinoApi
@@ -375,12 +377,21 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
 
 
+def _get_target_id(sql, database):
+    if sql:
+        if database:
+            return 'providers/Microsoft.Sql/servers/{0}/databases/{1}/'.format(sql, database)
+        else:
+            return 'providers/Microsoft.Sql/servers/{0}'.format(sql)
+
+
 def bind_webapp(
-    resource_group, name, authtype='MSI', permission=None,
+    cmd, resource_group, name, appname, authtype='MSI', permission=None,
     sql=None, database=None, client_id=None,
     client_secret=None, username=None, password=None
 ):
     print('binding now')
+    print(cmd)
     print(resource_group)
     print(name)
     print(sql)
@@ -395,9 +406,16 @@ def bind_webapp(
             AuthType(authtype), permission, client_id, client_secret, username, password
         )
 
-    api = CupertinoApi()
-    source = ''  # Get from webapp
-    target = ''  # Get from sql or other services
+    authtoken = get_access_token(cmd)
+    graphtoken = get_access_token(cmd, resource='https://graph.windows.net/')
+    sqltoken = get_access_token(cmd, resource='https://database.windows.net/')
+    mysqltoken = get_access_token(cmd, resource_type='oss-rdbms')
+    api = CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
+
+    subscription = get_subscription_id(cmd.cli_ctx)
+    rg_id = 'subscriptions/{0}/resourceGroups/{1}/providers'.format(subscription, resource_group)
+    source = '{0}/providers/Microsoft.Web/sites/{1}'.format(rg_id, appname)
+    target = '{0}/{1}'.format(rg_id, _get_target_id(sql, database))
     additional_info = {}
 
-    api.create(source, target, auth_info, additional_info)
+    api.create(name, source, target, auth_info, additional_info)
