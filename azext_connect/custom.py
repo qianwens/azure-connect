@@ -377,12 +377,12 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
 
 
-def _get_target_id(sql, database):
+def _get_target_id(scope, sql, database):
     if sql:
         if database:
-            return 'providers/Microsoft.Sql/servers/{0}/databases/{1}/'.format(sql, database)
+            return '{0}/providers/Microsoft.Sql/servers/{1}/databases/{2}/'.format(scope, sql, database)
         else:
-            return 'providers/Microsoft.Sql/servers/{0}'.format(sql)
+            return '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
 
 
 def bind_webapp(
@@ -391,13 +391,6 @@ def bind_webapp(
     client_secret=None, username=None, password=None
 ):
     print('binding now')
-    print(cmd)
-    print(resource_group)
-    print(name)
-    print(sql)
-    print(database)
-    print(authtype)
-    print(permission)
 
     if not AuthType.has_value(authtype):
         raise Exception('Auth type not supported')
@@ -413,9 +406,9 @@ def bind_webapp(
     api = CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
 
     subscription = get_subscription_id(cmd.cli_ctx)
-    rg_id = 'subscriptions/{0}/resourceGroups/{1}/providers'.format(subscription, resource_group)
-    source = '{0}/providers/Microsoft.Web/sites/{1}'.format(rg_id, appname)
-    target = '{0}/{1}'.format(rg_id, _get_target_id(sql, database))
+    scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+    source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
+    target = _get_target_id(scope, sql, database)
     additional_info = {}
 
-    api.create(name, source, target, auth_info, additional_info)
+    api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
