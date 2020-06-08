@@ -385,30 +385,48 @@ def _get_target_id(scope, sql, database):
             return '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
 
 
-def bind_webapp(
-    cmd, resource_group, name, appname, authtype='MSI', permission=None,
-    sql=None, database=None, client_id=None,
-    client_secret=None, username=None, password=None
+def _bind(
+    cmd, subscription, resource_group, name, source, target, authtype='MSI', permission=None, client_id=None,
+    client_secret=None, username=None, password=None, additional_info={}
 ):
-    print('binding now')
-
     if not AuthType.has_value(authtype):
         raise Exception('Auth type not supported')
-
     auth_info = AuthInfo(
             AuthType(authtype), permission, client_id, client_secret, username, password
         )
-
     authtoken = get_access_token(cmd)
     graphtoken = get_access_token(cmd, resource='https://graph.windows.net/')
     sqltoken = get_access_token(cmd, resource='https://database.windows.net/')
     mysqltoken = get_access_token(cmd, resource_type='oss-rdbms')
     api = CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
+    api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
 
+
+def bind_webapp(
+    cmd, resource_group, name, appname, authtype='MSI', permission=None,
+    sql=None, database=None, client_id=None,
+    client_secret=None, username=None, password=None
+):
     subscription = get_subscription_id(cmd.cli_ctx)
     scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
     source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
     target = _get_target_id(scope, sql, database)
-    additional_info = {}
+    _bind(
+        cmd, subscription, resource_group, name, source,
+        target, authtype, permission, client_id, client_secret, username, password
+    )
 
-    api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
+
+def bind_springcloud(
+    cmd, resource_group, name, springcloud, appname, authtype='MSI', permission=None,
+    sql=None, database=None, client_id=None,
+    client_secret=None, username=None, password=None
+):
+    subscription = get_subscription_id(cmd.cli_ctx)
+    scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+    source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/apps/{2}'.format(scope, springcloud, appname)
+    target = _get_target_id(scope, sql, database)
+    _bind(
+        cmd, subscription, resource_group, name, source,
+        target, authtype, permission, client_id, client_secret, username, password
+    )
