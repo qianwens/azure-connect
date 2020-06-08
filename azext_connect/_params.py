@@ -34,7 +34,7 @@ def load_arguments(self, _):
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
         c.argument('springcloud', options_list=['--spring-cloud', '-spc'], help='spring cloud name')
         c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
-        c.argument('sql', options_list=['--sql-server', '-sql'], help='SQL server name in the same resource group or SQL server ID')
+        c.argument('mysql', options_list=['--mysql-server', '-mysql'], help='SQL server name in the same resource group or mysql server ID')
         c.argument('database', options_list=['--database-name', '-db'], help='Database name')
         c.argument(
             'authtype', options_list=['--auth-type', '-auth'], help='Auth type could be MSI, SP, Secret',

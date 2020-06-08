@@ -377,12 +377,13 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
 
 
-def _get_target_id(scope, sql, database):
-    if sql:
-        if database:
-            return '{0}/providers/Microsoft.Sql/servers/{1}/databases/{2}/'.format(scope, sql, database)
-        else:
-            return '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
+def _get_target_id(scope, sql=None, mysql=None, database=None):
+    if sql and database:
+        return '{0}/providers/Microsoft.Sql/servers/{1}/databases/{2}/'.format(scope, sql, database)
+    if mysql and database:
+        return '{0}/providers/Microsoft.DBforMySQL/servers/{1}/databases/{2}'.format(scope, mysql, database)
+    else:
+        raise Exception('Target resource is not valid')
 
 
 def _bind(
@@ -410,7 +411,7 @@ def bind_webapp(
     subscription = get_subscription_id(cmd.cli_ctx)
     scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
     source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
-    target = _get_target_id(scope, sql, database)
+    target = _get_target_id(scope, sql=sql, database=database)
     _bind(
         cmd, subscription, resource_group, name, source,
         target, authtype, permission, client_id, client_secret, username, password
@@ -419,13 +420,13 @@ def bind_webapp(
 
 def bind_springcloud(
     cmd, resource_group, name, springcloud, appname, authtype='MSI', permission=None,
-    sql=None, database=None, client_id=None,
+    mysql=None, database=None, client_id=None,
     client_secret=None, username=None, password=None
 ):
     subscription = get_subscription_id(cmd.cli_ctx)
     scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
     source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/apps/{2}'.format(scope, springcloud, appname)
-    target = _get_target_id(scope, sql, database)
+    target = _get_target_id(scope, mysql=mysql, database=database)
     _bind(
         cmd, subscription, resource_group, name, source,
         target, authtype, permission, client_id, client_secret, username, password
