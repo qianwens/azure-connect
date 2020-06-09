@@ -13,20 +13,26 @@ class AuthType(Enum):
 
 class AuthInfo():
     def __init__(
-        self, auth_type, permission=None, client_id=None,
+        self, auth_type, permissions=[], client_id=None,
         client_secret=None, user=None, pwd=None
     ):
+        self.permissions = None
+        self.credential = None
         if auth_type == AuthType.MSI:
-            self.auth_type = auth_type
-            self.permission = permission
+            self.authType = 'SystemAssignedIdentity'
+            self.permissions = permissions
         elif auth_type == AuthType.SP:
-            self.auth_type = auth_type
-            self.client_id = client_id
-            self.client_secret = client_secret
-            self.permission = permission
+            self.auth_type = 'ServicePrincipal'
+            self.credential = {
+                'id': client_id,
+                'secret': client_secret
+            }
+            self.permissions = permissions
         elif auth_type == AuthType.SECRET:
-            self.auth_type = auth_type
-            self.user = user
-            self.pwd = pwd
+            self.auth_type = 'Secret'
+            self.credential = {
+                'id': user,
+                'secret': pwd
+            }
         else:
             raise Exception('Auth Type is not supported')
