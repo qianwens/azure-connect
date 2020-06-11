@@ -19,7 +19,7 @@ class AuthInfo():
         self.permissions = None
         self.credential = None
         if auth_type == AuthType.MSI:
-            self.authType = 'SystemAssignedIdentity'
+            self.auth_type = 'SystemAssignedIdentity'
             self.permissions = permissions
         elif auth_type == AuthType.SP:
             self.auth_type = 'ServicePrincipal'

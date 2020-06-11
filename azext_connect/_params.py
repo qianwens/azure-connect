@@ -36,12 +36,13 @@ def load_arguments(self, _):
         c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
         c.argument('mysql', options_list=['--mysql-server', '-mysql'], help='SQL server name in the same resource group or mysql server ID')
         c.argument('database', options_list=['--database-name', '-db'], help='Database name')
-        c.argument(
-            'authtype', options_list=['--auth-type', '-auth'], help='Auth type could be MSI, SP, Secret',
-            arg_type=get_enum_type(AuthType)
-        )
-        c.argument('permission', options_list=['--permission', '-per'], help='The permission assigned to the identity or SP')
-        c.argument('client_id', options_list=['--client-id', '-cid'], help='Client Id assigned to webapp. Only valid when auth type is SP')
-        c.argument('client_secret', options_list=['--client-secret', '-secret'], help='Client secret of the client id. Only valid when auth type is SP')
         c.argument('username', options_list=['--user-name', '-user'], help='User name of the database. Only valid when auth type is secret')
         c.argument('password', options_list=['--password', '-pwd'], help='Password of the database. Only valid when auth type is secret')
+
+    with self.argument_context('cupertino function') as c:
+        c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
+        c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
+        c.argument('appname', options_list=['--app-name', '-app'], help='Function app name')
+        c.argument('function_name', options_list=['--function-name', '-func'], help='Function name')
+        c.argument('signalR', options_list=['--signalr', '-signalr'], help='SignalR service name')
+        c.argument('binding', options_list=['--binding-type', '-binding'], help='The binding type of the function')

@@ -380,17 +380,25 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
 
 
-def _get_target_id(scope, sql=None, mysql=None, database=None):
+def _is_resourcid(resource):
+    return resource.startswith('/subscriptions/')
+
+
+def _get_target_id(scope, sql=None, mysql=None, database=None, signalR=None):
     if sql and database:
-        return '{0}/providers/Microsoft.Sql/servers/{1}/databases/{2}/'.format(scope, sql, database)
+        sql = sql if _is_resourcid(sql) else '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
+        return '{0}/databases/{1}/'.format(sql, database)
     if mysql and database:
-        return '{0}/providers/Microsoft.DBforMySQL/servers/{1}/databases/{2}'.format(scope, mysql, database)
+        mysql = mysql if _is_resourcid(mysql) else '{0}/providers/Microsoft.DBforMySQL/servers/{1}'.format(scope, mysql)
+        return '{0}/databases/{1}'.format(mysql, database)
+    if signalR:
+        return signalR if _is_resourcid(signalR) else '{0}/providers/Microsoft.SignalRService/signalR/{1}'.format(scope, signalR)
     else:
         raise Exception('Target resource is not valid')
 
 
 def _bind(
-    cmd, subscription, resource_group, name, source, target, authtype='MSI', permission=None, client_id=None,
+    cmd, subscription, resource_group, name, source, target, authtype, permission=None, client_id=None,
     client_secret=None, username=None, password=None, additional_info={}
 ):
     if not AuthType.has_value(authtype):
@@ -413,23 +421,21 @@ def bind_webapp(
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
-        scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
         target = _get_target_id(scope, sql=sql, database=database)
         result = _bind(
             cmd, subscription, resource_group, name, source,
             target, authtype, permission, client_id, client_secret, username, password
         )
-        logger.info(result)
-        logger.info('done')
+        print(result)
     except Exception as e:
+        print(e)
         logger.error(e)
 
 
 def bind_springcloud(
-    cmd, resource_group, name, springcloud, appname, authtype='MSI', permission=None,
-    mysql=None, database=None, client_id=None,
-    client_secret=None, username=None, password=None
+    cmd, resource_group, name, springcloud, appname, mysql=None, database=None, username=None, password=None
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
@@ -438,8 +444,27 @@ def bind_springcloud(
         target = _get_target_id(scope, mysql=mysql, database=database)
         result = _bind(
             cmd, subscription, resource_group, name, source,
-            target, authtype, permission, client_id, client_secret, username, password
+            target, authtype='Secret', username=username, password=password
         )
-        logger.info(result)
+        print(result)
     except Exception as e:
+        print(e)
+        logger.error(e)
+
+
+def bind_function(
+    cmd, resource_group, name, appname, function_name=None,
+    signalR=None, binding=None, username=None, password=None
+):
+    try:
+        subscription = get_subscription_id(cmd.cli_ctx)
+        scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.Web/sites/{1}/functions/{2}'.format(scope, appname, function_name)
+        target = _get_target_id(scope, signalR=signalR)
+        result = _bind(
+            cmd, subscription, resource_group, name, source,
+            target, 'Secret')
+        print(result)
+    except Exception as e:
+        print(e)
         logger.error(e)

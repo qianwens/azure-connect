@@ -21,7 +21,7 @@ class CupertinoApi(object):
         authInfo = None
         if auth_info:
             authInfo = {
-                'authType': auth_info.authType,
+                'authType': auth_info.auth_type,
                 'permissions': auth_info.permissions,
                 'credential': auth_info.credential
             }
