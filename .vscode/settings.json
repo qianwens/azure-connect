@@ -1,0 +1,12 @@
+{
+    "python.pythonPath": "${workspaceRoot}/../env/Scripts/python.exe",
+    "python.venvPath": "${workspceRoot}",
+    "python.linting.pylintEnabled": true,
+    "python.autoComplete.extraPaths": [
+        "${workspaceRoot}/../env/Lib/site-packages"
+    ],
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--config=setup.cfg"
+    ]
+}

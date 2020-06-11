@@ -3,15 +3,22 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
+from knack.log import get_logger
 from knack.util import CLIError
+from azure.cli.command_modules.profile.custom import get_access_token
 from azure.cli.core import get_default_cli
+from azure.cli.core.commands.client_factory import get_subscription_id
 import random
 import time
+from ._apis import CupertinoApi
 from ._cosmosdb import cosmosdb_handler
+from ._model import (AuthType, AuthInfo)
 from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 import subprocess
 from getpass import getpass
+
+logger = get_logger(__name__)
 
 SERVICE_MAP = {
     'signalr': ('signalr', 'Azure SignalR Service', 1),
@@ -24,6 +31,7 @@ SERVICE_MAP = {
     'spring-cloud': ('spring-cloud', 'Azure Spring Cloud', 8)
 }
 DEFAULT_CLI = get_default_cli()
+
 
 def connect(resource_group, aks = None, acr = None, webapp = None, sql = None,
             mysql = None, asc = None, ascapp = None):
@@ -370,3 +378,93 @@ def create_resource(service, resource_group, deployment_id, settings, para_dict)
         mysql_handler(resource_group, deployment_id, settings, para_dict)
     elif service[0] == 'spring-cloud':
         spring_cloud_handler(resource_group, deployment_id, settings, para_dict)
+
+
+def _is_resourcid(resource):
+    return resource.startswith('/subscriptions/')
+
+
+def _get_target_id(scope, sql=None, mysql=None, database=None, signalR=None):
+    if sql and database:
+        sql = sql if _is_resourcid(sql) else '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
+        return '{0}/databases/{1}/'.format(sql, database)
+    if mysql and database:
+        mysql = mysql if _is_resourcid(mysql) else '{0}/providers/Microsoft.DBforMySQL/servers/{1}'.format(scope, mysql)
+        return '{0}/databases/{1}'.format(mysql, database)
+    if signalR:
+        return signalR if _is_resourcid(signalR) else '{0}/providers/Microsoft.SignalRService/signalR/{1}'.format(scope, signalR)
+    else:
+        raise Exception('Target resource is not valid')
+
+
+def _bind(
+    cmd, subscription, resource_group, name, source, target, authtype, permission=None, client_id=None,
+    client_secret=None, username=None, password=None, additional_info={}
+):
+    if not AuthType.has_value(authtype):
+        raise Exception('Auth type not supported')
+    auth_info = AuthInfo(
+            AuthType(authtype), permission, client_id, client_secret, username, password
+        )
+    authtoken = get_access_token(cmd)
+    graphtoken = get_access_token(cmd, resource='https://graph.windows.net/')
+    sqltoken = get_access_token(cmd, resource='https://database.windows.net/')
+    mysqltoken = get_access_token(cmd, resource_type='oss-rdbms')
+    api = CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
+    return api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
+
+
+def bind_webapp(
+    cmd, resource_group, name, appname, authtype='MSI', permission=None,
+    sql=None, database=None, client_id=None,
+    client_secret=None, username=None, password=None
+):
+    try:
+        subscription = get_subscription_id(cmd.cli_ctx)
+        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
+        target = _get_target_id(scope, sql=sql, database=database)
+        result = _bind(
+            cmd, subscription, resource_group, name, source,
+            target, authtype, permission, client_id, client_secret, username, password
+        )
+        print(result)
+    except Exception as e:
+        print(e)
+        logger.error(e)
+
+
+def bind_springcloud(
+    cmd, resource_group, name, springcloud, appname, mysql=None, database=None, username=None, password=None
+):
+    try:
+        subscription = get_subscription_id(cmd.cli_ctx)
+        scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/apps/{2}'.format(scope, springcloud, appname)
+        target = _get_target_id(scope, mysql=mysql, database=database)
+        result = _bind(
+            cmd, subscription, resource_group, name, source,
+            target, authtype='Secret', username=username, password=password
+        )
+        print(result)
+    except Exception as e:
+        print(e)
+        logger.error(e)
+
+
+def bind_function(
+    cmd, resource_group, name, appname, function_name=None,
+    signalR=None, binding=None, username=None, password=None
+):
+    try:
+        subscription = get_subscription_id(cmd.cli_ctx)
+        scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.Web/sites/{1}/functions/{2}'.format(scope, appname, function_name)
+        target = _get_target_id(scope, signalR=signalR)
+        result = _bind(
+            cmd, subscription, resource_group, name, source,
+            target, 'Secret')
+        print(result)
+    except Exception as e:
+        print(e)
+        logger.error(e)

@@ -1,0 +1,26 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [ {
+        "name": "Azure CLI Debug (Integrated Console)",
+        "type": "python",
+        "request": "launch",
+        "pythonPath": "${config:python.pythonPath}",
+        "program": "${workspaceRoot}/../azure-cli/src/azure-cli/azure/cli/__main__.py",
+        "cwd": "${workspaceRoot}",
+        "args": [
+            "cupertino", "webapp", "bind","-n", "test", "-app", "web", "-sql", "s", "-db", "d", "-g", "shenwe"
+            // "cupertino", "springcloud", "bind", "-g", "shenwe", "-n", "test", "-spc", "springcloud", "-app", "apps", "-mysql", "mysqlserver", "-db", "databases", "-user", "username", "-pwd", "password"
+            // "cupertino", "function", "bind", "-g", "shenwe", "-n", "test", "-app", "website", "-func", "func1", "-binding", "in", "-signalr", "sigr"
+        ],
+        "console": "integratedTerminal",
+        "debugOptions": [
+            "WaitOnAbnormalExit",
+            "WaitOnNormalExit",
+            "RedirectOutput"
+        ],
+        "justMyCode": false
+    }]
+}
