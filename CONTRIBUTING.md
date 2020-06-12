@@ -37,7 +37,8 @@
     source env/bin/activate
     ```
 4. Install `azdev` tool by running: `pip install azdev`
-5. Complete setup by running: `azdev setup -c -r azure-connect`.
+5. Complete setup by running: `azdev setup -c -r azure-connect`
+6. Install the extension by running: `azdev extension add azure-connect`
 
 ### VSCode
 1. Install the python extension
