@@ -30,14 +30,14 @@ class CupertinoApi(object):
     def _populate_tokens(self, additional_info=None):
         if not additional_info:
             additional_info = {}
-        additional_info['graphToken'] = self._graphtoken['accessToken']
-        additional_info['sqlToken'] = self._sqltoken['accessToken']
-        additional_info['mysqlToken'] = self._mysqltoken['accessToken']
         return additional_info
 
     def _put_connection(self, uri, data):
         headers = {
             'Authorization': 'Bearer {0}'.format(self._authtoken['accessToken']),
+            'GraphToken': 'Bearer {0}'.format(self._graphtoken['accessToken']),
+            'SqlToken': 'Bearer {0}'.format(self._sqltoken['accessToken']),
+            'MySqlToken': 'Bearer {0}'.format(self._mysqltoken['accessToken']),
             'Content-Type': 'application/json'
         }
         # TODO: remove verify=False later. The localhost endpoint cert is not set. So set for workaround.

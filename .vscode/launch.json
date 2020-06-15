@@ -11,7 +11,8 @@
         "program": "${workspaceRoot}/../azure-cli/src/azure-cli/azure/cli/__main__.py",
         "cwd": "${workspaceRoot}",
         "args": [
-            "cupertino", "webapp", "bind","-n", "test", "-app", "web", "-sql", "s", "-db", "d", "-g", "shenwe"
+            // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-sql", "bwsongsql", "-db", "bwsongdb", "-g", "bwsonggroup", "-auth", "SECRET", "-user", "bwsong", "-pwd", ""
+            "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-sql", "bwsongsql", "-db", "bwsongdb", "-g", "bwsonggroup", "-auth", "MSI"
             // "cupertino", "springcloud", "bind", "-g", "shenwe", "-n", "test", "-spc", "springcloud", "-app", "apps", "-mysql", "mysqlserver", "-db", "databases", "-user", "username", "-pwd", "password"
             // "cupertino", "function", "bind", "-g", "shenwe", "-n", "test", "-app", "website", "-func", "func1", "-binding", "in", "-signalr", "sigr"
         ],
