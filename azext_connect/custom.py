@@ -439,8 +439,8 @@ def bind_springcloud(
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
-        scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
-        source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/apps/{2}'.format(scope, springcloud, appname)
+        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/Apps/{2}'.format(scope, springcloud, appname)
         target = _get_target_id(scope, mysql=mysql, database=database)
         result = _bind(
             cmd, subscription, resource_group, name, source,
@@ -458,7 +458,7 @@ def bind_function(
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
-        scope = 'subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}/functions/{2}'.format(scope, appname, function_name)
         target = _get_target_id(scope, signalR=signalR)
         result = _bind(
