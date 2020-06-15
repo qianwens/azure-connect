@@ -461,10 +461,12 @@ def bind_function(
         scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}/functions/{2}'.format(scope, appname, function_name)
         target = _get_target_id(scope, signalR=signalR)
+        additional_info = {'BindingType': binding}
         result = _bind(
             cmd, subscription, resource_group, name, source,
-            target, 'Secret')
+            target, 'Secret', None, None, None, username, password, additional_info)
         print(result)
     except Exception as e:
         print(e)
         logger.error(e)
+        
