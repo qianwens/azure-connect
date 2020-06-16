@@ -27,11 +27,6 @@ class CupertinoApi(object):
             }
         return authInfo
 
-    def _populate_tokens(self, additional_info=None):
-        if not additional_info:
-            additional_info = {}
-        return additional_info
-
     def _put_connection(self, uri, data):
         headers = {
             'Authorization': 'Bearer {0}'.format(self._authtoken['accessToken']),
@@ -52,7 +47,7 @@ class CupertinoApi(object):
             'sourceId': source,
             'targetId': target,
             'authInfo': self._convert_auth_info(auth_info),
-            'additionalInfo': self._populate_tokens(additional_info)
+            'additionalInfo': additional_info
         }
         data = {
             'name': name,
