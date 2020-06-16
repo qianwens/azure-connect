@@ -8,6 +8,7 @@ from knack.util import CLIError
 from azure.cli.command_modules.profile.custom import get_access_token
 from azure.cli.core import get_default_cli
 from azure.cli.core.commands.client_factory import get_subscription_id
+import json
 import random
 import time
 from ._apis import CupertinoApi
@@ -411,7 +412,14 @@ def _bind(
     sqltoken = get_access_token(cmd, resource='https://database.windows.net/')
     mysqltoken = get_access_token(cmd, resource_type='oss-rdbms')
     api = CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
-    return api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
+    result = api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
+    if result.ok is not True:
+        end = result.text.find('\r\n\r\nHEADERS\r\n=======')
+        msg = result.text[:end] if end > -1 else result.text
+        err_msg = 'Fail to bind {0} with {1}. Code:{2}. Detail:{3}'.format(source, target, result.status_code, msg)
+        raise Exception(err_msg)
+    res_obj = json.loads(result.text)
+    return res_obj
 
 
 def bind_webapp(
@@ -428,7 +436,7 @@ def bind_webapp(
             cmd, subscription, resource_group, name, source,
             target, authtype, permission, client_id, client_secret, username, password
         )
-        print(result)
+        print(json.dumps(result, indent=2))
     except Exception as e:
         print(e)
         logger.error(e)
@@ -446,7 +454,7 @@ def bind_springcloud(
             cmd, subscription, resource_group, name, source,
             target, authtype='Secret', username=username, password=password
         )
-        print(result)
+        print(json.dumps(result, indent=2))
     except Exception as e:
         print(e)
         logger.error(e)
@@ -465,8 +473,7 @@ def bind_function(
         result = _bind(
             cmd, subscription, resource_group, name, source,
             target, 'Secret', None, None, None, username, password, additional_info)
-        print(result)
+        print(json.dumps(result, indent=2))
     except Exception as e:
         print(e)
         logger.error(e)
-        
