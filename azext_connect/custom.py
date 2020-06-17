@@ -398,6 +398,14 @@ def _get_target_id(scope, sql=None, mysql=None, database=None, signalR=None):
         raise Exception('Target resource is not valid')
 
 
+def _create_api(cmd):
+    authtoken = get_access_token(cmd)
+    graphtoken = get_access_token(cmd, resource='https://graph.windows.net/')
+    sqltoken = get_access_token(cmd, resource='https://database.windows.net')
+    mysqltoken = get_access_token(cmd, resource_type='oss-rdbms')
+    return CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
+
+
 def _bind(
     cmd, subscription, resource_group, name, source, target, authtype, permission=None, client_id=None,
     client_secret=None, username=None, password=None, additional_info={}
@@ -405,13 +413,9 @@ def _bind(
     if not AuthType.has_value(authtype):
         raise Exception('Auth type not supported')
     auth_info = AuthInfo(
-            AuthType(authtype), permission, client_id, client_secret, username, password
-        )
-    authtoken = get_access_token(cmd)
-    graphtoken = get_access_token(cmd, resource='https://graph.windows.net/')
-    sqltoken = get_access_token(cmd, resource='https://database.windows.net/')
-    mysqltoken = get_access_token(cmd, resource_type='oss-rdbms')
-    api = CupertinoApi(authtoken, graphtoken, sqltoken, mysqltoken)
+        AuthType(authtype), permission, client_id, client_secret, username, password
+    )
+    api = _create_api(cmd)
     result = api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
     if result.ok is not True:
         end = result.text.find('\r\n\r\nHEADERS\r\n=======')
@@ -473,6 +477,43 @@ def bind_function(
         result = _bind(
             cmd, subscription, resource_group, name, source,
             target, 'Secret', None, None, None, username, password, additional_info)
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        print(e)
+        logger.error(e)
+
+
+def _validate(
+    cmd, subscription, resource_group, name, source, target, authtype, permission=None, client_id=None,
+    client_secret=None, username=None, password=None, additional_info={}
+):
+    if not AuthType.has_value(authtype):
+        raise Exception('Auth type not supported')
+    auth_info = AuthInfo(
+        AuthType(authtype), permission, client_id, client_secret, username, password
+    )
+    api = _create_api(cmd)
+    result = api.validate(subscription, resource_group, name, source, target, auth_info, additional_info)
+    if result.ok is not True:
+        end = result.text.find('\r\n\r\nHEADERS\r\n=======')
+        msg = result.text[:end] if end > -1 else result.text
+        err_msg = 'Fail to validate {0} with {1} connection. Code:{2}. Detail:{3}'.format(source, target, result.status_code, msg)
+        raise Exception(err_msg)
+    res_obj = json.loads(result.text)
+    return res_obj
+
+
+def validate_springcloud(
+    cmd, resource_group, name, springcloud, appname, mysql=None, database=None, username=None, password=None
+):
+    try:
+        subscription = get_subscription_id(cmd.cli_ctx)
+        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/Apps/{2}'.format(scope, springcloud, appname)
+        target = _get_target_id(scope, mysql=mysql, database=database)
+        result = _validate(
+            cmd, subscription, resource_group, name, source, target, authtype='Secret', username=username, password=password
+        )
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(e)

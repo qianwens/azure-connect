@@ -6,6 +6,7 @@ import requests
 class CupertinoApi(object):
 
     CONNECTION_URI = '{0}/subscriptions/{1}/resourceGroups/{2}/providers/Microsoft.Cupertino/connections/{3}'
+    VALIDATION_URI = '{0}/subscriptions/{1}/resourceGroups/{2}/providers/Microsoft.Cupertino/connections/{3}/validateConnectivity'
 
     def __init__(self, authtoken, graphtoken, sqltoken, mysqltoken):
         if 'CONN_HOST' in os.environ:
@@ -27,7 +28,7 @@ class CupertinoApi(object):
             }
         return authInfo
 
-    def _put_connection(self, uri, data):
+    def _make_headers(self):
         headers = {
             'Authorization': 'Bearer {0}'.format(self._authtoken['accessToken']),
             'GraphToken': 'Bearer {0}'.format(self._graphtoken['accessToken']),
@@ -35,9 +36,20 @@ class CupertinoApi(object):
             'MySqlToken': 'Bearer {0}'.format(self._mysqltoken['accessToken']),
             'Content-Type': 'application/json'
         }
+        return headers
+
+    def _put_connection(self, uri, data):
+        headers = self._make_headers()
         # TODO: remove verify=False later. The localhost endpoint cert is not set. So set for workaround.
         data_string = json.dumps(data)
         res = requests.put(uri, headers=headers, data=data_string, verify=False)
+        return res
+
+    def _post_connection(self, uri, data):
+        headers = self._make_headers()
+        # TODO: remove verify=False later. The localhost endpoint cert is not set. So set for workaround.
+        data_string = json.dumps(data)
+        res = requests.post(uri, headers=headers, data=data_string, verify=False)
         return res
 
     def create(self, subscription, rg, name, source, target, auth_info, additional_info=None):
@@ -54,4 +66,19 @@ class CupertinoApi(object):
             'properties': properties
         }
         res = self._put_connection(uri, data)
+        return res
+
+    def validate(self, subscription, rg, name, source, target, auth_info, additional_info=None):
+        uri = CupertinoApi.VALIDATION_URI.format(self._host, subscription, rg, name)
+        properties = {
+            'sourceId': source,
+            'targetId': target,
+            'authInfo': self._convert_auth_info(auth_info),
+            'additionalInfo': additional_info
+        }
+        data = {
+            'name': name,
+            'properties': properties
+        }
+        res = self._post_connection(uri, data)
         return res
