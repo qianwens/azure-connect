@@ -18,6 +18,7 @@ def load_arguments(self, _):
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
         c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
         c.argument('sql', options_list=['--sql-server', '-sql'], help='SQL server name in the same resource group or SQL server ID')
+        c.argument('cosmos', options_list=['--cosmos-account', '-cosmos'], help='CosmosDB Account name')
         c.argument('database', options_list=['--database-name', '-db'], help='Database name')
         c.argument(
             'authtype', options_list=['--auth-type', '-auth'], help='Auth type could be MSI, SP, Secret',
@@ -35,6 +36,7 @@ def load_arguments(self, _):
         c.argument('springcloud', options_list=['--spring-cloud', '-spc'], help='spring cloud name')
         c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
         c.argument('mysql', options_list=['--mysql-server', '-mysql'], help='SQL server name in the same resource group or mysql server ID')
+        c.argument('cosmos', options_list=['--cosmos-account', '-cosmos'], help='CosmosDB Account name')
         c.argument('database', options_list=['--database-name', '-db'], help='Database name')
         c.argument('username', options_list=['--user-name', '-user'], help='User name of the database. Only valid when auth type is secret')
         c.argument('password', options_list=['--password', '-pwd'], help='Password of the database. Only valid when auth type is secret')
@@ -46,3 +48,7 @@ def load_arguments(self, _):
         c.argument('function_name', options_list=['--function-name', '-func'], help='Function name')
         c.argument('signalR', options_list=['--signalr', '-signalr'], help='SignalR service name')
         c.argument('binding', options_list=['--binding-type', '-binding'], help='The binding type of the function')
+
+    with self.argument_context('cupertino validate') as c:
+        c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
+        c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')

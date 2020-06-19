@@ -27,7 +27,7 @@ class ConnectCommandsLoader(AzCommandsLoader):
             cli_ctx=cli_ctx, custom_command_type=custom_type)
 
     def load_command_table(self, args):
-        load_command_table(self,args)
+        load_command_table(self, args)
         return self.command_table
 
     def load_arguments(self, command):

@@ -9,6 +9,7 @@ def load_command_table(self, _):
         # g.custom_command('list', '')
     with self.command_group('cupertino springcloud') as g:
         g.custom_command('bind', 'bind_springcloud')
-        g.custom_command('validate', 'validate_springcloud')
     with self.command_group('cupertino function') as g:
         g.custom_command('bind', 'bind_function')
+    with self.command_group('cupertino') as g:
+        g.custom_command('validate', 'validate_general')

@@ -68,13 +68,9 @@ class CupertinoApi(object):
         res = self._put_connection(uri, data)
         return res
 
-    def validate(self, subscription, rg, name, source, target, auth_info, additional_info=None):
+    def validate(self, subscription, rg, name):
         uri = CupertinoApi.VALIDATION_URI.format(self._host, subscription, rg, name)
         properties = {
-            'sourceId': source,
-            'targetId': target,
-            'authInfo': self._convert_auth_info(auth_info),
-            'additionalInfo': additional_info
         }
         data = {
             'name': name,

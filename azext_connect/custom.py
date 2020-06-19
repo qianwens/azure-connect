@@ -385,13 +385,16 @@ def _is_resourcid(resource):
     return resource.startswith('/subscriptions/')
 
 
-def _get_target_id(scope, sql=None, mysql=None, database=None, signalR=None):
+def _get_target_id(scope, sql=None, mysql=None, cosmos=None, database=None, signalR=None):
     if sql and database:
         sql = sql if _is_resourcid(sql) else '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
         return '{0}/databases/{1}/'.format(sql, database)
     if mysql and database:
         mysql = mysql if _is_resourcid(mysql) else '{0}/providers/Microsoft.DBforMySQL/servers/{1}'.format(scope, mysql)
         return '{0}/databases/{1}'.format(mysql, database)
+    if cosmos and database:
+        cosmos = cosmos if _is_resourcid(cosmos) else '{0}/providers/Microsoft.DocumentDb/databaseAccounts/{1}'.format(scope, cosmos)
+        return '{0}/databases/{1}'.format(cosmos, database)
     if signalR:
         return signalR if _is_resourcid(signalR) else '{0}/providers/Microsoft.SignalRService/signalR/{1}'.format(scope, signalR)
     else:
@@ -428,14 +431,14 @@ def _bind(
 
 def bind_webapp(
     cmd, resource_group, name, appname, authtype='MSI', permission=None,
-    sql=None, database=None, client_id=None,
+    sql=None, cosmos=None, database=None, client_id=None,
     client_secret=None, username=None, password=None
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
         scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
-        target = _get_target_id(scope, sql=sql, database=database)
+        target = _get_target_id(scope, sql=sql, cosmos=cosmos, database=database)
         result = _bind(
             cmd, subscription, resource_group, name, source,
             target, authtype, permission, client_id, client_secret, username, password
@@ -447,13 +450,13 @@ def bind_webapp(
 
 
 def bind_springcloud(
-    cmd, resource_group, name, springcloud, appname, mysql=None, database=None, username=None, password=None
+    cmd, resource_group, name, springcloud, appname, mysql=None, cosmos=None, database=None, username=None, password=None
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
         scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/Apps/{2}'.format(scope, springcloud, appname)
-        target = _get_target_id(scope, mysql=mysql, database=database)
+        target = _get_target_id(scope, mysql=mysql, cosmos=cosmos, database=database)
         result = _bind(
             cmd, subscription, resource_group, name, source,
             target, authtype='Secret', username=username, password=password
@@ -483,38 +486,18 @@ def bind_function(
         logger.error(e)
 
 
-def _validate(
-    cmd, subscription, resource_group, name, source, target, authtype, permission=None, client_id=None,
-    client_secret=None, username=None, password=None, additional_info={}
-):
-    if not AuthType.has_value(authtype):
-        raise Exception('Auth type not supported')
-    auth_info = AuthInfo(
-        AuthType(authtype), permission, client_id, client_secret, username, password
-    )
-    api = _create_api(cmd)
-    result = api.validate(subscription, resource_group, name, source, target, auth_info, additional_info)
-    if result.ok is not True:
-        end = result.text.find('\r\n\r\nHEADERS\r\n=======')
-        msg = result.text[:end] if end > -1 else result.text
-        err_msg = 'Fail to validate {0} with {1} connection. Code:{2}. Detail:{3}'.format(source, target, result.status_code, msg)
-        raise Exception(err_msg)
-    res_obj = json.loads(result.text)
-    return res_obj
-
-
-def validate_springcloud(
-    cmd, resource_group, name, springcloud, appname, mysql=None, database=None, username=None, password=None
-):
+def validate_general(cmd, resource_group, name):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
-        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
-        source = '{0}/providers/Microsoft.AppPlatform/Spring/{1}/Apps/{2}'.format(scope, springcloud, appname)
-        target = _get_target_id(scope, mysql=mysql, database=database)
-        result = _validate(
-            cmd, subscription, resource_group, name, source, target, authtype='Secret', username=username, password=password
-        )
-        print(json.dumps(result, indent=2))
+        api = _create_api(cmd)
+        result = api.validate(subscription, resource_group, name)
+        if result.ok is not True:
+            end = result.text.find('\r\n\r\nHEADERS\r\n=======')
+            msg = result.text[:end] if end > -1 else result.text
+            err_msg = 'Fail to validate the connection {0}. Code:{1}. Detail:{2}'.format(name, result.status_code, msg)
+            raise Exception(err_msg)
+        res_obj = json.loads(result.text)
+        print(json.dumps(res_obj, indent=2))
     except Exception as e:
         print(e)
         logger.error(e)
