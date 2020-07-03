@@ -29,6 +29,7 @@ def load_arguments(self, _):
         c.argument('client_secret', options_list=['--client-secret', '-secret'], help='Client secret of the client id. Only valid when auth type is SP')
         c.argument('username', options_list=['--user-name', '-user'], help='User name of the database. Only valid when auth type is secret')
         c.argument('password', options_list=['--password', '-pwd'], help='Password of the database. Only valid when auth type is secret')
+        c.argument('keyvault', options_list=['--keyvault', '-kvt'], help='Keyvault name in the same resource group.')
 
     with self.argument_context('cupertino springcloud') as c:
         c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
