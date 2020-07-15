@@ -385,7 +385,7 @@ def _is_resourcid(resource):
     return resource.startswith('/subscriptions/')
 
 
-def _get_target_id(scope, sql=None, mysql=None, cosmos=None, database=None, signalR=None):
+def _get_target_id(scope, sql=None, mysql=None, cosmos=None, database=None, signalR=None, keyvault=None):
     if sql and database:
         sql = sql if _is_resourcid(sql) else '{0}/providers/Microsoft.Sql/servers/{1}'.format(scope, sql)
         return '{0}/databases/{1}/'.format(sql, database)
@@ -397,6 +397,8 @@ def _get_target_id(scope, sql=None, mysql=None, cosmos=None, database=None, sign
         return '{0}/databases/{1}'.format(cosmos, database)
     if signalR:
         return signalR if _is_resourcid(signalR) else '{0}/providers/Microsoft.SignalRService/signalR/{1}'.format(scope, signalR)
+    if keyvault:
+        return keyvault if _is_resourcid(keyvault) else '{0}/providers/Microsoft.KeyVault/vaults/{1}'.format(scope, keyvault)
     else:
         raise Exception('Target resource is not valid')
 
@@ -432,17 +434,25 @@ def _bind(
 def bind_webapp(
     cmd, resource_group, name, appname, authtype='MSI', permission=None,
     sql=None, cosmos=None, database=None, client_id=None,
-    client_secret=None, username=None, password=None
+    client_secret=None, username=None, password=None,
+    keyvault=None
 ):
     try:
         subscription = get_subscription_id(cmd.cli_ctx)
         scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
-        target = _get_target_id(scope, sql=sql, cosmos=cosmos, database=database)
-        result = _bind(
-            cmd, subscription, resource_group, name, source,
-            target, authtype, permission, client_id, client_secret, username, password
-        )
+        if sql is not None:
+            target = _get_target_id(scope, sql=sql, cosmos=cosmos, database=database)
+            result = _bind(
+                cmd, subscription, resource_group, name, source,
+                target, authtype, permission, client_id, client_secret, username, password
+            )
+        if keyvault is not None:
+            target = _get_target_id(scope, keyvault=keyvault)
+            result = _bind(
+                cmd, subscription, resource_group, name, source,
+                target, authtype, permission, client_id, client_secret, username, password
+            )
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(e)
