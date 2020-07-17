@@ -1,0 +1,29 @@
+{
+      "name": "azure-sample-djangoapp",
+      "version": "v1",
+      "services":
+          [
+              {
+                  "name": "sample-django-web",
+                  "type": "webapp"
+              }
+          ],
+      "databases":
+          [
+              {
+                  "serverName": "sample-django-server",
+                  "databaseName": "sample-django-db",
+                  "type": "postgresql",
+                  "password": "@sample-django-db.password"
+              }
+          ],
+      "environments":
+          {
+              "dev":
+              {
+                   "resourceGroup": "azure-sample-djangoapp-dev",
+                   "location": "eastus",
+                   "hash": null
+              }
+          }
+}

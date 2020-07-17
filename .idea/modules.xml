@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../../azure-cli/.idea/azure-cli.iml" filepath="$PROJECT_DIR$/../../azure-cli/.idea/azure-cli.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/azure-connect.iml" filepath="$PROJECT_DIR$/.idea/azure-connect.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../djangoapp/.idea/djangoapp.iml" filepath="$PROJECT_DIR$/../../djangoapp/.idea/djangoapp.iml" />
+    </modules>
+  </component>
+</project>

@@ -5,6 +5,7 @@
 
 from knack.log import get_logger
 from knack.util import CLIError
+from knack.prompting import prompt, prompt_y_n, prompt_choice_list, prompt_pass, NoTTYException
 from azure.cli.command_modules.profile.custom import get_access_token
 from azure.cli.core import get_default_cli
 from azure.cli.core.commands.client_factory import get_subscription_id
@@ -501,3 +502,22 @@ def validate_general(cmd, resource_group, name):
     except Exception as e:
         print(e)
         logger.error(e)
+
+
+def init_app(cmd):
+    from ._app_sample import sample_source_list, sample_name_list
+    sample_index = prompt_choice_list("select one", sample_name_list,
+                                      default=0)
+
+    from ._gitClient import download_source
+    download_source(url=sample_source_list[sample_index], location=".")
+
+    from ._app import App
+    from ._appClient import create_app
+    with open("./app_samples/"+sample_name_list[sample_index]+".json", 'r') as f:
+        import uuid
+        app_hash = uuid.uuid4().hex
+        app = App(data=f)
+        app.name = sample_name_list[sample_index]+app_hash
+        app.save()
+
