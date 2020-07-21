@@ -514,10 +514,15 @@ def init_app(cmd):
 
     from ._app import App
     from ._appClient import create_app
+    # load sample app
     with open("./app_samples/"+sample_name_list[sample_index]+".json", 'r') as f:
         import uuid
         app_hash = uuid.uuid4().hex
         app = App(data=f)
         app.name = sample_name_list[sample_index]+app_hash
+        app.resource_name_suffix = app_hash
         app.save()
+
+    # deploy
+
 

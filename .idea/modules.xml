@@ -3,8 +3,10 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../../azure-cli/.idea/azure-cli.iml" filepath="$PROJECT_DIR$/../../azure-cli/.idea/azure-cli.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../azure-cli-extensions/.idea/azure-cli-extensions.iml" filepath="$PROJECT_DIR$/../../azure-cli-extensions/.idea/azure-cli-extensions.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/azure-connect.iml" filepath="$PROJECT_DIR$/.idea/azure-connect.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../djangoapp/.idea/djangoapp.iml" filepath="$PROJECT_DIR$/../../djangoapp/.idea/djangoapp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../azure-sdk-for-python/sdk/identity/.idea/identity.iml" filepath="$PROJECT_DIR$/../../azure-sdk-for-python/sdk/identity/.idea/identity.iml" />
     </modules>
   </component>
 </project>

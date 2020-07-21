@@ -6,5 +6,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="azure-cli" />
     <orderEntry type="module" module-name="djangoapp" />
+    <orderEntry type="module" module-name="identity" />
+    <orderEntry type="module" module-name="azure-cli-extensions" />
   </component>
 </module>

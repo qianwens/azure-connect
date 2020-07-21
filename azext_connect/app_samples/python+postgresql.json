@@ -5,7 +5,11 @@
           [
               {
                   "name": "sample-django-web",
-                  "type": "webapp"
+                  "type": "webapp",
+                  "properties": {
+                    "runtime": "python|3.7"
+                  },
+                  "env": "DJANGO_ENV=production"
               }
           ],
       "databases":
@@ -13,8 +17,7 @@
               {
                   "serverName": "sample-django-server",
                   "databaseName": "sample-django-db",
-                  "type": "postgresql",
-                  "password": "@sample-django-db.password"
+                  "type": "postgresql"
               }
           ],
       "environments":
