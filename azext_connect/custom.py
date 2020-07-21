@@ -434,7 +434,7 @@ def _bind(
 
 def bind_webapp(
     cmd, resource_group, name, appname, authtype='MSI', permission=None,
-    sql=None, cosmos=None, database=None, client_id=None,
+    sql=None, mysql=None, cosmos=None, database=None, client_id=None,
     client_secret=None, username=None, password=None,
     keyvault=None
 ):
@@ -450,6 +450,12 @@ def bind_webapp(
             )
         if keyvault is not None:
             target = _get_target_id(scope, keyvault=keyvault)
+            result = _bind(
+                cmd, subscription, resource_group, name, source,
+                target, authtype, permission, client_id, client_secret, username, password
+            )
+        if mysql is not None:
+            target = _get_target_id(scope, mysql=mysql, database=database)
             result = _bind(
                 cmd, subscription, resource_group, name, source,
                 target, authtype, permission, client_id, client_secret, username, password

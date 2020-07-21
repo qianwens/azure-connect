@@ -11,12 +11,15 @@
         "program": "${workspaceRoot}/../azure-cli/src/azure-cli/azure/cli/__main__.py",
         "cwd": "${workspaceRoot}",
         "args": [
-            // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-sql", "bwsongsql", "-db", "bwsongdb", "-g", "bwsonggroup", "-auth", "SECRET", "-user", "bwsong", "-pwd", ""
+            // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-sql", "bwsongsql", "-db", "bwsongdb", "-g", "bwsonggroup", "-auth", "SECRET", "-user", "bwsong", "-pwd", "password"
             // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-sql", "bwsongsql", "-db", "bwsongdb", "-g", "bwsonggroup", "-auth", "MSI"
-            "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-kvt", "bwsongvault", "-g", "bwsonggroup", "-auth", "MSI"
+            // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongwebappnew", "-kvt", "bwsongvaultnew", "-g", "bwsonggroup", "-auth", "MSI"
+            // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-mysql", "bwsongmysql", "-db", "sys", "-g", "bwsonggroup", "-auth", "SECRET", "-user", "bwsong", "-pwd", "password"
+            // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-mysql", "bwsongmysql2", "-db", "sys", "-g", "bwsonggroup", "-auth", "MSI"
             // "cupertino", "springcloud", "bind", "-g", "shenwe", "-n", "test", "-spc", "springcloud", "-app", "apps", "-mysql", "mysqlserver", "-db", "databases", "-user", "username", "-pwd", "password"
             //"cupertino", "function", "bind", "-g", "functionkai2", "-n", "testKai06150212", "-app", "functionKai", "-func", "SignalRin", "-binding", "input", "-signalr", "KaiSignalR"
             // "cupertino", "function", "bind", "-g", "functionkai2", "-n", "test", "-app", "functionKai", "-func", "SignalOut", "-binding", "output", "-signalr", "KaiSignalR"
+            // "cupertino", "validate", "-n", "test", "-g", "bwsonggroup"
         ],
         "console": "integratedTerminal",
         "debugOptions": [
@@ -24,6 +27,9 @@
             "WaitOnNormalExit",
             "RedirectOutput"
         ],
-        "justMyCode": false
+        "justMyCode": false,
+        "env": {
+            "CONN_HOST": "https://cupertino-mvp.azurewebsites.net"
+        }
     }]
 }
