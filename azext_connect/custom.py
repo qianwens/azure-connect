@@ -442,24 +442,11 @@ def bind_webapp(
         subscription = get_subscription_id(cmd.cli_ctx)
         scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
-        if sql is not None:
-            target = _get_target_id(scope, sql=sql, cosmos=cosmos, database=database)
-            result = _bind(
-                cmd, subscription, resource_group, name, source,
-                target, authtype, permission, client_id, client_secret, username, password
-            )
-        if keyvault is not None:
-            target = _get_target_id(scope, keyvault=keyvault)
-            result = _bind(
-                cmd, subscription, resource_group, name, source,
-                target, authtype, permission, client_id, client_secret, username, password
-            )
-        if mysql is not None:
-            target = _get_target_id(scope, mysql=mysql, database=database)
-            result = _bind(
-                cmd, subscription, resource_group, name, source,
-                target, authtype, permission, client_id, client_secret, username, password
-            )
+        target = _get_target_id(scope, sql=sql, cosmos=cosmos, mysql=mysql, database=database, keyvault=keyvault)
+        result = _bind(
+            cmd, subscription, resource_group, name, source,
+            target, authtype, permission, client_id, client_secret, username, password
+        )
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(e)
