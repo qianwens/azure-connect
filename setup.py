@@ -36,5 +36,6 @@ setup(
     classifiers=CLASSIFIERS,
     packages=find_packages(),
     package_data={'azext_connect': ['azext_metadata.json']},
+    data_files=[('app_samples', ['app_samples/*.json'])],
     install_requires=DEPENDENCIES
 )

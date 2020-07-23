@@ -505,24 +505,44 @@ def validate_general(cmd, resource_group, name):
 
 
 def init_app(cmd):
-    from ._app_sample import sample_source_list, sample_name_list
-    sample_index = prompt_choice_list("select one", sample_name_list,
-                                      default=0)
+    sample_index = 0
 
-    from ._gitClient import download_source
-    download_source(url=sample_source_list[sample_index], location=".")
+    from ._app_sample import sample_source_list, sample_name_list
+    #sample_index = prompt_choice_list("select one", sample_name_list,
+    #                                  default=0)
+
+    import uuid
+    app_hash = uuid.uuid4().hex[:18]
+
+    from ._gitUtil import download_source
+    download_source(url=sample_source_list[sample_index], location=".\\" + sample_name_list[sample_index]+app_hash)
 
     from ._app import App
-    from ._appClient import create_app
+    from ._appClient import AppClient
+
+    import pkgutil
+    data = pkgutil.get_data(__name__, "app_samples/"+sample_name_list[sample_index]+".json")
     # load sample app
-    with open("./app_samples/"+sample_name_list[sample_index]+".json", 'r') as f:
-        import uuid
-        app_hash = uuid.uuid4().hex
-        app = App(data=f)
-        app.name = sample_name_list[sample_index]+app_hash
-        app.resource_name_suffix = app_hash
-        app.save()
+    # with open("./app_samples/"+sample_name_list[sample_index]+".json", 'r') as f:
+    app = App(data=data)
+    app.name = sample_name_list[sample_index]+app_hash
+    app.id_suffix = app_hash
+    app_client = AppClient(app)
+    app_client.create_app()
+    app_client.deploy_app("dev")
+    app_client.open_app("dev")
 
-    # deploy
+
+def deploy_app(cmd):
+    from ._app import App
+    from ._appClient import AppClient
+
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.deploy_app("dev")
+        app_client.open_app("dev")
 
 
+def run_command(cmd):
+    pass

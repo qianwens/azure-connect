@@ -1,6 +1,8 @@
 def load_command_table(self, _):
-    with self.command_group('') as g:
-        g.custom_command('app', 'init_app')
+    with self.command_group('app') as g:
+        g.custom_command('create', 'init_app')
+        g.custom_command('deploy', 'deploy_app')
+        g.custom_command('run', 'run_command')
 
     with self.command_group('connect') as g:
         g.custom_command('services', 'connect')

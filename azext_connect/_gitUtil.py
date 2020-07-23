@@ -32,13 +32,32 @@ def download_source(url, location):
     _urlretrieve(url, location)
 
 
-def pull_repo():
+def push_repo(url, repo, app_name, source_folder):
+    cwd = ".\\" + app_name + "\\" + source_folder
+    from os import path
+    if path.isfile(".\\app.json"):
+        cwd = ".\\" + source_folder
+    _init_repo(cwd)
+    args = ["push", "--set-upstream", url, repo, "-f"]
+    _run_command(cwd, args)
 
-    pass
+
+def _init_repo(location):
+    args = ["init"]
+    _run_command(location, args)
+    args = ["add", "*"]
+    _run_command(location, args)
+    args = ["commit", "-m", "first commit"]
+    _run_command(location, args)
 
 
-def push_repo():
-    pass
+def _run_command(cwd, args):
+    args = ["git"] + args
+    logger.warning("git command: %s", args)
+    env_kwargs = {}
+    result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd)
+    if result > 0:
+        raise CLIError('Failed to perform {} operation.'.format(args[1]))
 
 
 def _urlretrieve(url, location):

@@ -1,12 +1,13 @@
 class Service:
-    def __init__(self, name, type, env, **kwargs):
+    def __init__(self, name, type, env, source, **kwargs):
         self.name = name
         self.type = type
         self.properties = kwargs
         self.env = env
+        self.source = source
 
 
-class Database:
+class Addon:
     def __init__(self, name, type):
         self.name = name
         self.type = type
@@ -14,17 +15,17 @@ class Database:
 
 class Environment:
     def __init__(self, resource_group, location):
-        self.resource_group = resource_group
+        self.resourceGroup = resource_group
         self.location = location
 
 
 class App:
-    self.app_version = "v1"
-    self.name = None
-    self.resource_name_suffix = None
-    self.services = []
-    self.databases = []
-    self.environments = {}
+    app_version = "v1"
+    name = None
+    id_suffix = None
+    services = []
+    addons = []
+    environments = {}
 
     def __init__(self, data):
         if data:
@@ -35,7 +36,7 @@ class App:
         self.services.append(service)
 
     def add_db(self, db):
-        self.databases.append(db)
+        self.addons.append(db)
 
     def add_env(self, name, env):
         self.environments[name] = env
