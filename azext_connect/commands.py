@@ -3,6 +3,7 @@ def load_command_table(self, _):
         g.custom_command('create', 'init_app')
         g.custom_command('deploy', 'deploy_app')
         g.custom_command('run', 'run_command')
+        g.custom_command('db migrate', 'migrate_db')
 
     with self.command_group('connect') as g:
         g.custom_command('services', 'connect')

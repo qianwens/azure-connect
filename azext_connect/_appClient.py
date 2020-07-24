@@ -47,6 +47,8 @@ class AppClient:
         for service in self.app.services:
             self._create_service(service, environment)
 
+        self.migrate_db(environment)
+
     def get_app_log(self):
         pass
 
@@ -58,6 +60,22 @@ class AppClient:
 
     def local_run(self):
         pass
+
+    def run_command(self, environment, commands=None):
+        from ._run import run_ssh
+        resource_group = self.app.environments[environment].get('resourceGroup')
+        # assume we only have one webapp service here
+        service_name = self.app.services[0].get('name') + self.app.id_suffix + environment
+        run_ssh(resource_group, service_name, commands=commands)
+
+    def migrate_db(self, environment):
+        for database in self.app.addons:
+            migrate_command = database.get('migrate', None)
+            if migrate_command:
+                commands = ["cd site/wwwroot", "source /antenv/bin/activate",
+                            "pip install -r requirements.txt", migrate_command]
+                print("command to run: ", commands)
+                self.run_command(environment, commands)
 
     def _create_resource_group(self, name, location):
         parameters = [

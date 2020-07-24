@@ -508,8 +508,8 @@ def init_app(cmd):
     sample_index = 0
 
     from ._app_sample import sample_source_list, sample_name_list
-    #sample_index = prompt_choice_list("select one", sample_name_list,
-    #                                  default=0)
+    sample_index = prompt_choice_list("select one", sample_name_list,
+                                      default=0)
 
     import uuid
     app_hash = uuid.uuid4().hex[:18]
@@ -522,8 +522,6 @@ def init_app(cmd):
 
     import pkgutil
     data = pkgutil.get_data(__name__, "app_samples/"+sample_name_list[sample_index]+".json")
-    # load sample app
-    # with open("./app_samples/"+sample_name_list[sample_index]+".json", 'r') as f:
     app = App(data=data)
     app.name = sample_name_list[sample_index]+app_hash
     app.id_suffix = app_hash
@@ -536,7 +534,6 @@ def init_app(cmd):
 def deploy_app(cmd):
     from ._app import App
     from ._appClient import AppClient
-
     with open("./app.json", 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
@@ -545,4 +542,18 @@ def deploy_app(cmd):
 
 
 def run_command(cmd):
-    pass
+    from ._app import App
+    from ._appClient import AppClient
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.run_command("dev")
+
+
+def migrate_db(cmd):
+    from ._app import App
+    from ._appClient import AppClient
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.migrate_db("dev")

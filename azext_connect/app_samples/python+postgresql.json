@@ -18,7 +18,8 @@
               {
                   "serverName": "sample-django-server",
                   "databaseName": "sample-django-db",
-                  "type": "postgresql"
+                  "type": "postgresql",
+                  "migrate": "python manage.py migrate"
               }
           ],
       "environments":
