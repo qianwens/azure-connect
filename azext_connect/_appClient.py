@@ -368,6 +368,7 @@ class AppClient:
     def _get_postgresql_log(self, database, environment):
         lines = 10
         serverName = environment + self.app.id_suffix
+        print('\n' + '\033[1m' + 'Log of postgresql {0}'.format(serverName) + '\033[0m')
         # list log files
         file_names = self._list_postgresql_log(serverName, environment)
 
@@ -435,7 +436,58 @@ class AppClient:
         logger(service, environment)
 
     def _get_webapp_log(self, service, environment):
-        pass
+        lines = 10
+        service_name = service.get('name') + self.app.id_suffix + environment
+        print('\n' + '\033[1m' + 'Log of webapp {0}'.format(service_name) + '\033[0m')
+        parameters = [
+            'webapp', 'log', 'download',
+            '-n', service_name,
+            '-g', self.app.environments[environment].get('resourceGroup'),
+            '--output', 'none'
+        ]
+
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to get log of webapp %s' % service_name)
+        
+        import zipfile
+        with zipfile.ZipFile('webapp_logs.zip') as zf:
+            zf.extractall()
+            os.chdir("LogFiles/")
+            os.chdir("kudu/")
+            os.chdir("deployment/")
+            for file in os.listdir():
+                current_file = open(file, 'r')
+                file_line = -1
+                for file_line, line in enumerate(current_file):
+                    pass
+                file_line += 1
+                current_file.seek(0, 0)
+                if file_line < lines:
+                    while True:
+                        current_line = current_file.readline()
+                        if current_line:
+                            print('[webapp][{0}]:{1}'.format(service_name, current_line))
+                        else:
+                            break
+                else:
+                    j = 0
+                    while j < file_line - lines:
+                        current_file.readline()
+                        j += 1
+                    while True:
+                        current_line = current_file.readline()
+                        if current_line:
+                            print('[webapp][{0}]:{1}'.format(service_name, current_line))
+                        else:
+                            break
+
+                current_file.close()
+        
+        os.chdir("../../../")
+        os.remove('webapp_logs.zip')
+        import shutil
+        shutil.rmtree('deployments')
+        shutil.rmtree('LogFiles')
 
     def _get_keyvault_info(self, environment):
         res = []
