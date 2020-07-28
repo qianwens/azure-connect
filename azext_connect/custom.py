@@ -19,6 +19,8 @@ from ._mysql import mysql_handler
 from ._spring_cloud import spring_cloud_handler
 import subprocess
 from getpass import getpass
+from ._app import App
+from ._appClient import AppClient
 
 logger = get_logger(__name__)
 
@@ -505,26 +507,34 @@ def validate_general(cmd, resource_group, name):
 
 
 def init_app(cmd):
-    sample_index = 0
+    from os import path
+    if path.isfile(".\\app.json"):
+        with open("./app.json", 'r') as f:
+            app = App(data=f.read())
+            if app.name:
+                print("Detected Cupertino app in current folder:", app.name)
+                op_index = prompt_choice_list("Choose operations:", ['show', 'open', 'deploy', 'log', 'run', 'local'],
+                                              default=1)
+                AppOperations[op_index](cmd)
 
-    from ._app_sample import sample_source_list, sample_name_list
-    sample_index = prompt_choice_list("select one", sample_name_list,
-                                      default=0)
+    from ._app_sample import sample_source_list, sample_name_list, sample_temp_list
+    sample_index = prompt_choice_list("Create Cupertino app from sample solutions: ", sample_name_list,
+                                      default=1)
 
     import uuid
-    app_hash = uuid.uuid4().hex[:18]
-
     from ._gitUtil import download_source
-    download_source(url=sample_source_list[sample_index], location=".\\" + sample_name_list[sample_index]+app_hash)
-
-    from ._app import App
-    from ._appClient import AppClient
-
     import pkgutil
-    data = pkgutil.get_data(__name__, "app_samples/"+sample_name_list[sample_index]+".json")
+    data = pkgutil.get_data(__name__, "app_samples/"+sample_temp_list[sample_index]+".json")
+    app_hash = uuid.uuid4().hex[:18]
+    app_name = prompt("Enter app name (default '{0}'): ".format(sample_temp_list[sample_index]+app_hash))\
+               or sample_temp_list[sample_index]+app_hash
+    location = prompt("Enter app dev deployment location (default '{0}'): ".format('eastus')) or 'eastus'
     app = App(data=data)
-    app.name = sample_name_list[sample_index]+app_hash
+    app.name = app_name
     app.id_suffix = app_hash
+    app.environments['dev'].update({'resourceGroup': app.environments['dev'].get('resourceGroup') + app.id_suffix})
+    app.environments['dev'].update({'location': location})
+    download_source(url=sample_source_list[sample_index], location=".\\" + app_name)
     app_client = AppClient(app)
     app_client.create_app()
     app_client.deploy_app("dev")
@@ -532,8 +542,6 @@ def init_app(cmd):
 
 
 def deploy_app(cmd):
-    from ._app import App
-    from ._appClient import AppClient
     with open("./app.json", 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
@@ -541,9 +549,14 @@ def deploy_app(cmd):
         app_client.open_app("dev")
 
 
+def open_app(cmd):
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.open_app("dev")
+
+
 def run_command(cmd):
-    from ._app import App
-    from ._appClient import AppClient
     with open("./app.json", 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
@@ -551,9 +564,10 @@ def run_command(cmd):
 
 
 def migrate_db(cmd):
-    from ._app import App
-    from ._appClient import AppClient
     with open("./app.json", 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.migrate_db("dev")
+
+
+AppOperations = [None, None, deploy_app, None, run_command, None]

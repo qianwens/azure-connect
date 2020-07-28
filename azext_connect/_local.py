@@ -18,6 +18,3 @@ def runServer():
         os.system("python manage.py runserver")
     except:
         pass
-
-    
-runServer()

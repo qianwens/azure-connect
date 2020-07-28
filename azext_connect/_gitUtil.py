@@ -29,6 +29,7 @@ DEFAULT_CLI = get_default_cli()
 
 
 def download_source(url, location):
+    print("Downloading source code from:", url, "...")
     _urlretrieve(url, location)
 
 

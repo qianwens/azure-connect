@@ -28,13 +28,14 @@ class AppClient:
         self._keyvault_cache = {}
 
     def create_app(self):
-
+        logger.warning("Create app: {0}".format(self.app.name))
         # generate app config
         with open(".\\" + self.app.name + "\\app.json", 'w') as outfile:
             json.dump(self.app.__dict__, outfile)
 
     def deploy_app(self, environment):
         # create resource group
+        logger.warning("Deploy app {0} in environment: {1}".format(self.app.name, environment))
         rg = self.app.environments[environment].get('resourceGroup')
         location = self.app.environments[environment].get('location')
         self._create_resource_group(rg, location)
@@ -56,7 +57,11 @@ class AppClient:
         pass
 
     def open_app(self, environment):
-        pass
+        import webbrowser
+        # get url of webapp
+
+        logger.warning("Open browser at {0}".format(url))
+        webbrowser.open(url)
 
     def local_run(self):
         pass
@@ -78,11 +83,13 @@ class AppClient:
                 self.run_command(environment, commands)
 
     def _create_resource_group(self, name, location):
+        logger.warning("Creating resource group: {0}...".format(name))
         parameters = [
             'group', 'create',
             '--name', name,
             '--location', location,
-            '--tags', 'app='+self.app.name
+            '--tags', 'app='+self.app.name,
+            '-o', 'table'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource group %s' % name)
@@ -104,27 +111,31 @@ class AppClient:
 
     def _create_keyvault(self, environment):
         self._keyvault_cache[environment] = {}
-
+        key_vault_name = environment + self.app.id_suffix
+        logger.warning("Creating keyvault: {0}...".format(key_vault_name))
         parameters = [
             'keyvault', 'create',
-            '--name', environment + self.app.id_suffix,
+            '--name', key_vault_name,
             '--location', self.app.environments[environment].get('location'),
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
-            '--tags', 'app='+self.app.name
+            '--tags', 'app='+self.app.name,
+            '-o', 'table'
         ]
 
         if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create keyvault %s' % self.app.id_suffix + environment)
+            raise CLIError('Fail to create keyvault %s' % key_vault_name)
 
     def _create_deploy_account(self, environment):
         import uuid
         password = str(uuid.uuid4())
         user_name = "deployuser" + self.app.id_suffix + environment
+        logger.warning('creating web app deploy user: {0}...'.format(user_name))
         self._store_secret(environment, "deployuser" + environment, password)
         parameters = [
             'webapp', 'deployment', 'user', 'set',
             '--user-name', user_name,
-            '--password', password
+            '--password', password,
+            '-o', 'table'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create deployment account %s' % user_name)
@@ -144,7 +155,7 @@ class AppClient:
         self._create_deploy_account(environment)
         service_name = service.get('name') + self.app.id_suffix + environment
         service_plan_name = environment + self.app.id_suffix
-        print('create app service')
+        logger.warning('creating app service plan: {0}...'.format(service_plan_name))
         parameters = [
             'appservice', 'plan', 'create',
             '--name', service_plan_name,
@@ -153,30 +164,37 @@ class AppClient:
             '--number-of-workers', '1',  # todo: specify the worker number
             '--is-linux',
             '--sku', 'S1', # F1 free servicefarm max 10
-            '--tags', 'app=' + self.app.name
+            '--tags', 'app=' + self.app.name,
+            '-o', 'table',
+            '--query', '[name, resourceGroup, location, maximumElasticWorkerCount, id]'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % self.app.name + environment)
-
+        logger.warning("Creating webapp: {0}...".format(service_name))
         parameters = [
             'webapp', 'create',
             '--name', service_name,
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
             '--plan', service_plan_name,
             '--runtime', service.get('properties').get('runtime'),
-            '--tags', 'app='+self.app.name
+            '--tags', 'app='+self.app.name,
+            '-o', 'table',
+            '--query', '[defaultHostName, resourceGroup, location, state, id]'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % service_name)
 
+        logger.warning("Configuring local git...")
         parameters = [
             'webapp', 'deployment', 'source', 'config-local-git',
             '--name', service_name,
-            '--resource-group', self.app.environments[environment].get('resourceGroup')
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '-o', 'table'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % service_name)
 
+        logger.warning("Configuring webapp settings...")
         settings = [service.get('env')]
         for database in self.app.addons:
             settings.append("DBHOST=" + self._get_database_hostname(database, environment))
@@ -188,16 +206,19 @@ class AppClient:
             'webapp', 'config', 'appsettings', 'set',
             '--name', service_name,
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
-            '--settings'
+            '-o', 'table',
+            '--settings',
         ] + settings
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % name)
 
         # push source code
+        logger.warning("Pushing source code...")
         from ._gitUtil import push_repo
         deploy_user, password = self._get_deploy_account(environment)
         repo_url = f"https://{deploy_user}:{password}@{service_name}.scm.azurewebsites.net/{service_name}.git"
         push_repo(repo_url, "master", self.app.name, service.get('source'))
+        logger.warning("Run `git push {0} master -f` to deploy source code.".format(repo_url))
 
     def _create_database(self, database, environment):
         database_creator = {
@@ -213,7 +234,8 @@ class AppClient:
             'keyvault', 'secret', 'set',
             '--name', name,
             '--vault-name', environment + self.app.id_suffix,
-            '--value', value
+            '--value', value,
+            '-o', 'table'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create secret %s' % name)
@@ -227,44 +249,49 @@ class AppClient:
         administrator_login_password = str(uuid.uuid4())
         # todo: check server exist
         # store password
+        logger.warning('Storing postfresql server admin user secret...')
         self._store_secret(environment, database.get('serverName') + "-adminpassword", administrator_login_password)
-        serverName = environment + self.app.id_suffix
-
+        server_name = environment + self.app.id_suffix
+        logger.warning('creating postgresql server: {0}...'.format(server_name))
         # create server
         parameters = [
             'postgres', 'server', 'create',
-            '--name', serverName,
+            '--name', server_name,
             '--location', self.app.environments[environment].get('location'),
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
             '--sku-name', 'GP_Gen5_2',
             '--admin-user', 'azureadmin',
             '--admin-password', administrator_login_password,
-            '--tags', 'app=' + self.app.name
+            '--tags', 'app=' + self.app.name,
+            '-o', 'table',
+            '--query', '[fullyQualifiedDomainName, location, resourceGroup, userVisibleState, id]'
         ]
         if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create resource %s' % serverName)
-
+            raise CLIError('Fail to create resource %s' % server_name)
+        logger.warning('creating postgresql DB: {0}...'.format(database.get('databaseName')))
         # create db
         parameters = [
             'postgres', 'db', 'create',
             '--name', database.get('databaseName'),
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
-            '--server-name', serverName
+            '--server-name', server_name,
+            '-o', 'table'
         ]
         if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create resource %s' % serverName)
-
+            raise CLIError('Fail to create resource %s' % server_name)
+        logger.warning('Opening postgres server firewall for azure service access...')
         # configure azure firewall
         parameters = [
             'postgres', 'server', 'firewall-rule', 'create',
             '--name', 'azure-access',
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
-            '--server-name', serverName,
+            '--server-name', server_name,
             '--start-ip-address', '0.0.0.0',
-            '--end-ip-address', '0.0.0.0'
+            '--end-ip-address', '0.0.0.0',
+            '-o', 'table'
         ]
         if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create resource %s' % serverName)
+            raise CLIError('Fail to create resource %s' % server_name)
 
     def _get_database_hostname(self, database, environment):
         hostname_suffix = {
