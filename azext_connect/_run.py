@@ -5,6 +5,10 @@ import threading
 import time
 import sys
 from ._tunnel import TunnelServer
+from knack.log import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def run_ssh(resource_group_name, webapp_name, commands=None):
