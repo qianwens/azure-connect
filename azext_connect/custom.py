@@ -12,6 +12,7 @@ from azure.cli.core.commands.client_factory import get_subscription_id
 import json
 import random
 import time
+import os
 from ._apis import CupertinoApi
 from ._cosmosdb import cosmosdb_handler
 from ._model import (AuthType, AuthInfo)
@@ -550,6 +551,26 @@ def run_command(cmd):
         app_client.run_command("dev")
 
 
+def download_log(cmd):
+    from ._app import App
+    from ._appClient import AppClient
+
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.get_app_log("dev")
+
+
+def show_app(cmd):
+    from ._app import App
+    from ._appClient import AppClient
+
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.get_app("dev")
+
+
 def migrate_db(cmd):
     from ._app import App
     from ._appClient import AppClient
@@ -557,3 +578,12 @@ def migrate_db(cmd):
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.migrate_db("dev")
+
+
+def local(cmd):
+    from ._app import App
+    from ._appClient import AppClient
+    with open("./app.json", 'r') as f:
+        app = App(data=f.read())
+        app_client = AppClient(app)
+        app_client.local_run("dev")
