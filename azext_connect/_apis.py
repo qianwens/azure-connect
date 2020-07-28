@@ -24,7 +24,8 @@ class CupertinoApi(object):
             authInfo = {
                 'authType': auth_info.auth_type,
                 'permissions': auth_info.permissions,
-                'credential': auth_info.credential
+                "id": auth_info.id,
+                "secret": auth_info.secret
             }
         return authInfo
 
