@@ -95,18 +95,9 @@ class AppClient:
 
     def local_run(self, environment):
         for database in self.app.addons:
+            self._set_database_firewall(database, environment)
             self._set_database_env(database, environment)
-
-        print("Env:")
-        print("DBHOST = {0}".format(os.environ.get("DBHOST")))
-        print("DBUSER = {0}".format(os.environ.get("DBUSER")))
-        print("DBNAME = {0}".format(os.environ.get("DBNAME")))
-        print("DBPASS = **********")
-        print("DJANGO_ENV = {0}".format(os.environ.get("DJANGO_ENV")))
-
-        os.chdir("azure-sample-master/")
-        from ._local import runServer
-        runServer()
+            self._run_database_server(database)
 
     def run_command(self, environment, commands=None):
         from ._run import run_ssh
@@ -571,4 +562,48 @@ class AppClient:
         for key, value in secrets.items():
             if key == database.get('serverName') + "-adminpassword":
                 os.environ['DBPASS'] = value
-                break 
+                break
+        
+        print("Env:")
+        print("DBHOST = {0}".format(os.environ.get("DBHOST")))
+        print("DBUSER = {0}".format(os.environ.get("DBUSER")))
+        print("DBNAME = {0}".format(os.environ.get("DBNAME")))
+        print("DBPASS = **********")
+        print("DJANGO_ENV = {0}".format(os.environ.get("DJANGO_ENV")))
+
+    def _run_database_server(self, database):
+        database_servers = {
+            "postgresql": self._run_postgresql_server
+        }
+        server = database_servers[database.get('type')]
+        server()
+
+    def _run_postgresql_server(self):
+        os.chdir("azure-sample-master/")
+        from ._local import runServer
+        runServer()
+
+    def _set_database_firewall(self, database, environment):
+        import requests
+        ip = requests.get('http://ip.42.pl/raw').text
+        print("Current IP: {0}".format(ip))
+
+        database_firewalls = {
+            "postgresql": self._set_postgresql_firewall
+        }
+        firewall = database_firewalls[database.get('type')]
+        firewall(database, environment, ip)
+
+    def _set_postgresql_firewall(self, database, environment, ip):
+        serverName = environment + self.app.id_suffix
+        parameters = [
+            'postgres', 'server', 'firewall-rule', 'create',
+            '-g', self.app.environments[environment].get('resourceGroup'),
+            '-s', serverName,
+            '-n', 'LocalIp',
+            '--start-ip-address', ip,
+            '--end-ip-address', ip,
+            '--output', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to set firewall rul for PostgresSQL %s' % serverName)
