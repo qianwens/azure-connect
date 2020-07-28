@@ -13,6 +13,8 @@ import json
 import random
 import time
 import subprocess
+import prettytable as pt
+import os
 from getpass import getpass
 from ._app import App
 
@@ -50,21 +52,59 @@ class AppClient:
 
         self.migrate_db(environment)
 
-    def get_app_log(self):
-        pass
+    def get_app_log(self, environment):
+        # get db log
+        for db in self.app.addons:
+            self._get_database_log(db, environment)
+        # get app log
+        for service in self.app.services:
+            self._get_service_log(service, environment)
 
-    def get_app(self):
-        pass
+    def get_app(self, environment):
+        print('\033[1m' + 'About' + '\033[0m')
+        for service in self.app.services:
+            self._get_service_info(service, environment)
+        
+        print('\n' + '\033[1m' + 'Connected Services' + '\033[0m')
+        table = pt.PrettyTable(['Service Type', 'Name', 'Endpoint', 'ResourceId'])
+        table.add_row(self._get_keyvault_info(environment))
+        for db in self.app.addons:
+            table.add_row(self._get_database_info(db, environment))
+        print(table)
+
+        print('\n' + '\033[1m' + 'Secrets in keyvault' + '\033[0m')
+        table = pt.PrettyTable(['Secret Name', 'Secret Value', 'Usage'])
+        vaults = self._get_keyvault_secrets(environment)
+        for key, value in vaults.items():
+            usage = self._parse_secret_name(key)
+            table.add_row([key, value, usage])
+        print(table)
+
+        print('\n' + '\033[1m' + 'Next Commands' + '\033[0m')
+        table = pt.PrettyTable(['Service Type', 'Command Description', 'Command'])
+        printTable = []
+        for db in self.app.addons:
+            printTable += self._get_database_commands(db, environment)
+        for service in self.app.services:
+            printTable += self._get_service_commands(service, environment)
+        for command in printTable:
+            table.add_row(command)
+        print(table)
 
     def open_app(self, environment):
         import webbrowser
         # get url of webapp
-
+        # assume we only have one webapp service here
+        service_name = self.app.services[0].get('name') + self.app.id_suffix + environment
+        url = "https://{0}.azurewebsites.net".format(service_name)
         logger.warning("Open browser at {0}".format(url))
         webbrowser.open(url)
 
-    def local_run(self):
-        pass
+    def local_run(self, environment):
+        for database in self.app.addons:
+            self._set_database_firewall(database, environment)
+            self._set_database_env(database, environment)
+            self._run_database_server(database)
 
     def run_command(self, environment, commands=None):
         from ._run import run_ssh
@@ -298,3 +338,301 @@ class AppClient:
             "postgresql": '.postgres.database.azure.com'
         }
         return environment + self.app.id_suffix + hostname_suffix[database.get('type')]
+
+    def _get_database_log(self, database, environment):
+        database_logger = {
+            "postgresql": self._get_postgresql_log
+        }
+        logger = database_logger[database.get('type')]
+        logger(database, environment)
+
+    def _list_postgresql_log(self, serverName, environment):
+        parameters = [
+            'postgres', 'server-logs', 'list',
+            '--server-name', serverName,
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '--output', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to list logs of postgresql %s' % serverName)
+
+        file_names = []
+        log_file = json.loads(json.dumps(DEFAULT_CLI.result.result))
+        for item in log_file[1:]:
+            file_names.append(item['name'])
+        if file_names.count == 0:
+            return
+        file_names.reverse()
+        return file_names
+
+    def _get_postgresql_log(self, database, environment):
+        lines = 10
+        serverName = environment + self.app.id_suffix
+        # list log files
+        file_names = self._list_postgresql_log(serverName, environment)
+
+        # download and print log files
+        i = 0
+        logs = []
+        while lines > 0:
+            if i >= len(file_names):
+                return
+
+            parameters = [
+                'postgres', 'server-logs', 'download',
+                '--server-name', serverName,
+                '--resource-group', self.app.environments[environment].get('resourceGroup'),
+                '-n', file_names[i]
+            ]
+
+            if DEFAULT_CLI.invoke(parameters):
+                raise CLIError('Fail to load log %s' % file_names[i])
+            
+            current_file = open(file_names[i], 'r')
+            file_line = -1
+            for file_line, line in enumerate(current_file):
+                pass
+            file_line += 1
+            current_file.seek(0, 0)
+            if lines > file_line:
+                log = []
+                while True:
+                    current_line = current_file.readline()
+                    if current_line:
+                        log.append('[postgresql][{0}]:{1}'.format(serverName, current_line))
+                    else:
+                        break
+                current_file.close()
+                os.remove(file_names[i])
+                logs[0:len(log)-1] = log
+                lines = lines - file_line
+                i += 1
+                continue
+            else:
+                j = 0
+                log = []
+                while j < file_line - lines:
+                    current_file.readline()
+                    j += 1
+                while True:
+                    current_line = current_file.readline()
+                    if current_line:
+                        log.append('[postgresql][{0}]:{1}'.format(serverName, current_line))
+                    else:
+                        break
+                current_file.close()
+                os.remove(file_names[i])
+                logs[0:len(log)-1] = log
+                break
+
+        print(*logs, sep='\n')
+
+    def _get_service_log(self, service, environment):
+        service_loggers = {
+            "webapp": self._get_webapp_log
+        }
+        logger = service_loggers[service.get('type')]
+        logger(service, environment)
+
+    def _get_webapp_log(self, service, environment):
+        pass
+
+    def _get_keyvault_info(self, environment):
+        res = []
+        server = environment + self.app.id_suffix
+        res.append('KeyVault')
+        res.append(server)
+        info = json.loads(self._get_keyvault(environment))
+        res.append(info['properties']['vaultUri'])
+        res.append(info['id'])
+        return res
+
+    def _get_database_info(self, database, environment):
+        database_info = {
+            "postgresql": self._get_postgresql_info
+        }
+        info = database_info[database.get('type')]
+        return info(database, environment)
+
+    def _get_postgresql(self, database, environment):
+        serverName = environment + self.app.id_suffix
+        parameters = [
+            'postgres', 'server', 'show',
+            '--name', serverName,
+            '--resource-group', self.app.environments[environment].get('resourceGroup')
+        ]
+        from six import StringIO
+        stdout_buf = StringIO()
+        try:
+            if not DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                return stdout_buf.getvalue()
+        except SystemExit as ex:
+            pass
+        return None
+
+    def _get_postgresql_info(self, database, environment):
+        res = []
+        # server = environment + self.app.id_suffix
+        res.append('PostgresDB')
+        res.append(database['databaseName'])
+        res.append(self._get_database_hostname(database, environment))
+        info = json.loads(self._get_postgresql(database, environment))
+        res.append(info['id'])
+        return res
+
+    def _get_keyvault_secrets(self, environment):
+        res = {}
+        vault = environment + self.app.id_suffix
+        parameters = [
+            'keyvault', 'secret', 'list',
+            '--vault-name', vault,
+            '--output', "none"
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to get vault secret %s' % vault)
+
+        secret_names = []
+        secret_names_json = json.loads(json.dumps(DEFAULT_CLI.result.result))
+        for item in secret_names_json:
+            secret_names.append(item['name'])
+
+        for item in secret_names:
+            parameters = [
+                'keyvault', 'secret', 'show',
+                '--vault-name', vault,
+                '-n', item,
+                '--output', "none"
+            ]
+            if DEFAULT_CLI.invoke(parameters):
+                raise CLIError('Fail to get vault secret %s' % vault)
+            secret_json = json.loads(json.dumps(DEFAULT_CLI.result.result))
+            res[item] = secret_json['value']
+
+        return res
+    
+    def _get_service_info(self, service, environment):
+        service_info = {
+            "webapp": self._get_webapp_info
+        }
+        info = service_info[service.get('type')]
+        return info(service, environment)
+
+    def _get_webapp_info(self, service, environment):
+        service_name = service.get('name') + self.app.id_suffix + environment
+
+        print("Name\t\t {0}".format(service_name))
+        print("HostNames\t {0}.azurewebsites.net".format(service_name))
+        print("GitURL\t\t https://{0}.scm.azurewebsites.net/{0}.git".format(service_name))
+        print("Environment\t {0}".format(environment))
+
+    def _get_service_commands(self, service, environment):
+        service_commands = {
+            "webapp": self._get_webapp_commands
+        }
+        commands = service_commands[service.get('type')]
+        return commands(service, environment)
+
+    def _get_webapp_commands(self, service, environment):
+        res = []
+        service_type = 'Webapp'
+        service_name = service.get('name') + self.app.id_suffix + environment
+        rg = self.app.environments[environment].get('resourceGroup')
+
+        # az webapp show
+        res.append([service_type, 'Get the details of a web app.', 'az webapp show -n {0} -g {1}'.format(service_name, rg)])
+
+        # az webapp config show
+        res.append([service_type, 'Get the details of a web app\'s configuration.', 'az webapp config show -n {0} -g {1}'.format(service_name, rg)])
+
+        return res
+
+    def _get_database_commands(self, database, environment):
+        database_commands = {
+            "postgresql": self._get_postgresql_commands
+        }
+        commands = database_commands[database.get('type')]
+        return commands(database, environment)
+
+    def _get_postgresql_commands(self, database, environment):
+        res = []
+        serverName = environment + self.app.id_suffix
+        rg = self.app.environments[environment].get('resourceGroup')
+        service_type = 'PostgresDB'
+
+        # az postgres server show
+        res.append([service_type, 'Get the details of a server.', 'az postgres server show -n {0} -g {1}'.format(serverName, rg)])
+
+        # az postgres server configuration show
+        res.append([service_type, 'Get the configuration for a server.', 'az postgres server configuration show -n {0} -g {1}'.format(serverName, rg)])
+
+        return res
+
+    def _parse_secret_name(self, secret_name):
+        if secret_name.endswith('-adminpassword'):
+            server_name = secret_name.replace('-adminpassword', '')
+            return "Admin password of {0}.".format(server_name)
+
+        elif secret_name.startswith('deployuser'):
+            return "Webapp deployment user."
+
+    def _set_database_env(self, database, environment):
+        database_env = {
+            "postgresql": self._set_postgresql_env
+        }
+        env = database_env[database.get('type')]
+        env(database, environment)
+
+    def _set_postgresql_env(self, database, environment):
+        os.environ["DJANGO_ENV"] = "production"
+        os.environ["DBHOST"] = self._get_database_hostname(database, environment)
+        os.environ["DBUSER"] = "azureadmin@{0}{1}".format(environment, self.app.id_suffix)
+        os.environ['DBNAME'] = database.get('databaseName')
+        secrets = self._get_keyvault_secrets(environment)
+        for key, value in secrets.items():
+            if key == database.get('serverName') + "-adminpassword":
+                os.environ['DBPASS'] = value
+                break
+        
+        print("Env:")
+        print("DBHOST = {0}".format(os.environ.get("DBHOST")))
+        print("DBUSER = {0}".format(os.environ.get("DBUSER")))
+        print("DBNAME = {0}".format(os.environ.get("DBNAME")))
+        print("DBPASS = **********")
+        print("DJANGO_ENV = {0}".format(os.environ.get("DJANGO_ENV")))
+
+    def _run_database_server(self, database):
+        database_servers = {
+            "postgresql": self._run_postgresql_server
+        }
+        server = database_servers[database.get('type')]
+        server()
+
+    def _run_postgresql_server(self):
+        os.chdir("azure-sample-master/")
+        from ._local import runServer
+        runServer()
+
+    def _set_database_firewall(self, database, environment):
+        import requests
+        ip = requests.get('http://ip.42.pl/raw').text
+        print("Current IP: {0}".format(ip))
+
+        database_firewalls = {
+            "postgresql": self._set_postgresql_firewall
+        }
+        firewall = database_firewalls[database.get('type')]
+        firewall(database, environment, ip)
+
+    def _set_postgresql_firewall(self, database, environment, ip):
+        serverName = environment + self.app.id_suffix
+        parameters = [
+            'postgres', 'server', 'firewall-rule', 'create',
+            '-g', self.app.environments[environment].get('resourceGroup'),
+            '-s', serverName,
+            '-n', 'LocalIp',
+            '--start-ip-address', ip,
+            '--end-ip-address', ip,
+            '--output', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to set firewall rul for PostgresSQL %s' % serverName)

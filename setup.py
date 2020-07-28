@@ -23,7 +23,9 @@ CLASSIFIERS = [
     'License :: OSI Approved :: MIT License',
 ]
 
-DEPENDENCIES = []
+DEPENDENCIES = [
+    'PrettyTable~=0.7.2',
+]
 
 setup(
     name='connect',
