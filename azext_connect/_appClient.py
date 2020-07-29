@@ -32,7 +32,7 @@ class AppClient:
     def create_app(self):
         logger.warning("Create app: {0}".format(self.app.name))
         # generate app config
-        with open(".\\" + self.app.name + "\\app.json", 'w') as outfile:
+        with open("./" + self.app.name + "/app.json", 'w') as outfile:
             json.dump(self.app.__dict__, outfile)
 
     def deploy_app(self, environment):
@@ -58,7 +58,7 @@ class AppClient:
         for service in self.app.services:
             if 'source' not in service or not service['source']:
                 continue
-            launch_path = os.path.join(".\\" + self.app.name, service['source'], '.vscode', 'launch.json')
+            launch_path = os.path.join("./" + self.app.name, service['source'], '.vscode', 'launch.json')
             if os.path.exists(launch_path):
                 with open(launch_path, 'r') as fp:
                     content = fp.read()
