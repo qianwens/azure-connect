@@ -85,7 +85,7 @@ def run_commands(chan, commands):
 
     while True:
         time.sleep(1)
-        if wait_time + timedelta(seconds=30) < datetime.now():
+        if wait_time + timedelta(seconds=60) < datetime.now():
             break
 
 
