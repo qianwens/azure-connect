@@ -53,31 +53,39 @@ class AppClient:
         self.migrate_db(environment)
 
     def get_app_log(self, environment):
+        logs = []
         # get db log
         for db in self.app.addons:
-            self._get_database_log(db, environment)
+            log = self._get_database_log(db, environment)
+            logs.extend(log)
         # get app log
         for service in self.app.services:
-            self._get_service_log(service, environment)
+            log = self._get_service_log(service, environment)
+            logs.extend(log)
+
+        sorted_logs = sorted(logs, key=lambda log: log[0])
+        
+        for log in sorted_logs:
+            print(log[0] + ' ' + log[1].replace('\n', ''))
 
     def get_app(self, environment):
-        print('\033[1m' + 'About' + '\033[0m')
+        # print('\033[1m' + 'About' + '\033[0m')
         for service in self.app.services:
             self._get_service_info(service, environment)
         
         print('\n' + '\033[1m' + 'Connected Services' + '\033[0m')
-        table = pt.PrettyTable(['Service Type', 'Name', 'Endpoint', 'ResourceId'])
+        table = pt.PrettyTable(['Service Type', 'Name', 'Endpoint'])
         table.add_row(self._get_keyvault_info(environment))
         for db in self.app.addons:
             table.add_row(self._get_database_info(db, environment))
         print(table)
 
         print('\n' + '\033[1m' + 'Secrets in keyvault' + '\033[0m')
-        table = pt.PrettyTable(['Secret Name', 'Secret Value', 'Usage'])
+        table = pt.PrettyTable(['Secret Name', 'Secret Value'])
         vaults = self._get_keyvault_secrets(environment)
         for key, value in vaults.items():
-            usage = self._parse_secret_name(key)
-            table.add_row([key, value, usage])
+            # usage = self._parse_secret_name(key)
+            table.add_row([key, value])
         print(table)
 
         print('\n' + '\033[1m' + 'Next Commands' + '\033[0m')
@@ -344,7 +352,7 @@ class AppClient:
             "postgresql": self._get_postgresql_log
         }
         logger = database_logger[database.get('type')]
-        logger(database, environment)
+        return logger(database, environment)
 
     def _list_postgresql_log(self, serverName, environment):
         parameters = [
@@ -366,15 +374,14 @@ class AppClient:
         return file_names
 
     def _get_postgresql_log(self, database, environment):
+        logs = []
         lines = 10
         serverName = environment + self.app.id_suffix
-        print('\n' + '\033[1m' + 'Log of postgresql {0}'.format(serverName) + '\033[0m')
         # list log files
         file_names = self._list_postgresql_log(serverName, environment)
 
         # download and print log files
         i = 0
-        logs = []
         while lines > 0:
             if i >= len(file_names):
                 return
@@ -396,49 +403,58 @@ class AppClient:
             file_line += 1
             current_file.seek(0, 0)
             if lines > file_line:
-                log = []
                 while True:
                     current_line = current_file.readline()
                     if current_line:
-                        log.append('[postgresql][{0}]:{1}'.format(serverName, current_line))
+                        parsed_log = self._parse_postgre_log(current_line, serverName)
+                        if parsed_log is not None:
+                            logs.append(parsed_log)
                     else:
                         break
                 current_file.close()
                 os.remove(file_names[i])
-                logs[0:len(log)-1] = log
                 lines = lines - file_line
                 i += 1
                 continue
             else:
                 j = 0
-                log = []
                 while j < file_line - lines:
                     current_file.readline()
                     j += 1
                 while True:
                     current_line = current_file.readline()
                     if current_line:
-                        log.append('[postgresql][{0}]:{1}'.format(serverName, current_line))
+                        parsed_log = self._parse_postgre_log(current_line, serverName)
+                        if parsed_log is not None:
+                            logs.append(parsed_log)
                     else:
                         break
                 current_file.close()
-                os.remove(file_names[i])
-                logs[0:len(log)-1] = log
+                # os.remove(file_names[i])
                 break
+        return logs
 
-        print(*logs, sep='\n')
+    def _parse_postgre_log(self, log, server_name):
+        contents = log.split(':', 3)
+        times = contents[2].split(' ')
+        if (len(times) == 1):
+            return None
+        if (len(contents) == 1):
+            return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ']
+        else:
+            return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ' + contents[3]]
 
     def _get_service_log(self, service, environment):
         service_loggers = {
             "webapp": self._get_webapp_log
         }
         logger = service_loggers[service.get('type')]
-        logger(service, environment)
+        return logger(service, environment)
 
     def _get_webapp_log(self, service, environment):
+        logs = []
         lines = 10
         service_name = service.get('name') + self.app.id_suffix + environment
-        print('\n' + '\033[1m' + 'Log of webapp {0}'.format(service_name) + '\033[0m')
         parameters = [
             'webapp', 'log', 'download',
             '-n', service_name,
@@ -466,7 +482,9 @@ class AppClient:
                     while True:
                         current_line = current_file.readline()
                         if current_line:
-                            print('[webapp][{0}]:{1}'.format(service_name, current_line))
+                            parsed_log = self._parse_webapp_log(current_line, service_name)
+                            if parsed_log is not None:
+                                logs.append(self._parse_webapp_log(current_line, service_name))
                         else:
                             break
                 else:
@@ -477,7 +495,9 @@ class AppClient:
                     while True:
                         current_line = current_file.readline()
                         if current_line:
-                            print('[webapp][{0}]:{1}'.format(service_name, current_line))
+                            parsed_log = self._parse_webapp_log(current_line, service_name)
+                            if parsed_log is not None:
+                                logs.append(self._parse_webapp_log(current_line, service_name))
                         else:
                             break
 
@@ -488,6 +508,17 @@ class AppClient:
         import shutil
         shutil.rmtree('deployments')
         shutil.rmtree('LogFiles')
+        return logs
+
+    def _parse_webapp_log(self, log, service_name):
+        contents = log.split('  ', 1)
+        times = contents[0].split('T', 1)
+        if (len(times) == 1):
+            return None
+        if (len(contents) == 1):
+            return [times[0] + ' ' + times[1], service_name + '[webapp]: ']
+        else:
+            return [times[0] + ' ' + times[1], service_name + '[webapp]: ' + contents[1]]
 
     def _get_keyvault_info(self, environment):
         res = []
@@ -496,7 +527,7 @@ class AppClient:
         res.append(server)
         info = json.loads(self._get_keyvault(environment))
         res.append(info['properties']['vaultUri'])
-        res.append(info['id'])
+        # res.append(info['id'])
         return res
 
     def _get_database_info(self, database, environment):
@@ -529,7 +560,7 @@ class AppClient:
         res.append(database['databaseName'])
         res.append(self._get_database_hostname(database, environment))
         info = json.loads(self._get_postgresql(database, environment))
-        res.append(info['id'])
+        # res.append(info['id'])
         return res
 
     def _get_keyvault_secrets(self, environment):
