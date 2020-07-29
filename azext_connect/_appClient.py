@@ -401,19 +401,33 @@ class AppClient:
                     else:
                         break
                 current_file.close()
-                # os.remove(file_names[i])
+                os.remove(file_names[i])
                 break
         return logs
 
     def _parse_postgre_log(self, log, server_name):
-        contents = log.split(':', 3)
-        times = contents[2].split(' ')
-        if (len(times) == 1):
-            return None
-        if (len(contents) == 1):
-            return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ']
+        contents = log.split('-', 4)
+        if (len(contents) < 3):
+            return
+        times = contents[2].split(' ', 2)
+        if (len(contents) < 5):
+            return [contents[0] + '-' + contents[1] + '-' + times[0] + ' ' + times[1], server_name + '[postresql]: ']
         else:
-            return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ' + contents[3]]
+            if contents[4].startswith('ERROR'):
+                contents[4] = '\033[31;1m' + contents[4] + '\033[0m'
+            elif contents[4].startswith('WARNING'):
+                contents[4] = '\033[35;1m' + contents[4] + '\033[0m'
+            elif contents[4].startswith('STATEMENT') or contents[4].startswith('LOG'):
+                contents[4] = '\033[32;1m' + contents[4] + '\033[0m'
+            return [contents[0] + '-' + contents[1] + '-' + times[0] + ' ' + times[1], server_name + '[postresql]: ' + contents[4]]
+        # contents = log.split(':', 3)
+        # times = contents[2].split(' ')
+        # if (len(times) == 1):
+        #     return None
+        # if (len(contents) == 1):
+        #     return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ']
+        # else:
+        #     return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ' + contents[3]]
 
     def _get_service_log(self, service, environment):
         service_loggers = {
