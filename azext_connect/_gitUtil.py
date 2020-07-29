@@ -38,10 +38,10 @@ def download_source(url, location):
 
 
 def push_repo(url, repo, app_name, source_folder):
-    cwd = ".\\" + app_name + "\\" + source_folder
+    cwd = "./" + app_name + "/" + source_folder
     from os import path
-    if path.isfile(".\\app.json"):
-        cwd = ".\\" + source_folder
+    if path.isfile("./app.json"):
+        cwd = "./" + source_folder
     _init_repo(cwd)
     args = ["push", "--set-upstream", url, repo, "-f"]
     _run_command(cwd, args)

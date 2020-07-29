@@ -513,7 +513,7 @@ def init_app(cmd):
     print(f.renderText('Cupertino'))
 
     from os import path
-    if path.isfile(".\\app.json"):
+    if path.isfile("./app.json"):
         with open("./app.json", 'r') as f:
             app = App(data=f.read())
             if app.name:
@@ -527,7 +527,6 @@ def init_app(cmd):
     print("\033[92m{}\033[00m".format('* Welcome to Cupertino app cli!'))
     sample_index = prompt_choice_list("> Please select a sample webapp solutions: ", sample_name_list,
                                       default=1)
-
     import uuid
     from ._gitUtil import download_source
     import pkgutil
@@ -541,7 +540,7 @@ def init_app(cmd):
     app.id_suffix = app_hash
     app.environments['dev'].update({'resourceGroup': app.environments['dev'].get('resourceGroup') + app.id_suffix})
     app.environments['dev'].update({'location': location})
-    download_source(url=sample_source_list[sample_index], location=".\\" + app_name)
+    download_source(url=sample_source_list[sample_index], location="./" + app_name)
     app_client = AppClient(app)
     app_client.create_app()
     app_client.deploy_app("dev")
