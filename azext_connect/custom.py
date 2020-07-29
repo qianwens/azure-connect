@@ -22,6 +22,7 @@ import subprocess
 from getpass import getpass
 from ._app import App
 from ._appClient import AppClient
+from os import path
 
 logger = get_logger(__name__)
 
@@ -548,7 +549,10 @@ def init_app(cmd):
 
 
 def deploy_app(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.deploy_app("dev")
@@ -556,45 +560,84 @@ def deploy_app(cmd):
 
 
 def open_app(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.open_app("dev")
 
 
 def run_command(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.run_command("dev")
 
 
 def download_log(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.get_app_log("dev")
 
 
 def show_app(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.get_app("dev")
 
 
 def migrate_db(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.migrate_db("dev")
 
 
 def local(cmd):
-    with open("./app.json", 'r') as f:
+    app_file = "./app.json"
+    if not path.isfile(app_file):
+        app_file = "./" + _find_app_file() + "/app.json"
+    with open(app_file, 'r') as f:
         app = App(data=f.read())
         app_client = AppClient(app)
         app_client.local_run("dev")
 
 
 AppOperations = [show_app, open_app, deploy_app, download_log, run_command, local]
+
+
+def _find_app_file():
+    import os
+    from os import path
+    path_list = []
+    for dir in os.listdir():
+        if path.isfile('./' + dir + '/app.json'):
+            path_list.append(dir)
+
+    if len(path_list) == 0:
+        raise CLIError('No app found in current directory')
+    if len(path_list) == 1:
+        print("\033[92m{}\033[00m".format('* Detected app {} in current folder'.format(path_list[0])))
+        return path_list[0]
+    if len(path_list) > 1:
+        print("\033[92m{}\033[00m".format("* Detected more than one app in current folder"))
+        print(' '.join(path_list))
+        app_name = prompt("> Please enter app name (default '{0}'): ".format(path_list[0]) \
+                      or path_list[0])
+        return app_name

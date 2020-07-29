@@ -769,7 +769,6 @@ class AppClient:
     def _set_database_firewall(self, database, environment):
         import requests
         ip = requests.get('http://ip.42.pl/raw').text
-        print("Current IP: {0}".format(ip))
 
         database_firewalls = {
             "postgresql": self._set_postgresql_firewall
