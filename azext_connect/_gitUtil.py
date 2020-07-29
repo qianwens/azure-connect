@@ -22,6 +22,7 @@ import zipfile
 import stat
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import urlopen  # pylint: disable=import-error
+from halo import Halo
 
 logger = get_logger(__name__)
 
@@ -29,8 +30,11 @@ DEFAULT_CLI = get_default_cli()
 
 
 def download_source(url, location):
-    print("Downloading source code from:", url, "...")
+    spinner = Halo(text="[app] Downloading source code from: {0} ...".format(url),
+                   spinner='dots', text_color='yellow', color='blue')
+    spinner.start()
     _urlretrieve(url, location)
+    spinner.succeed("[app] Downloaded source code from: {0}".format(url))
 
 
 def push_repo(url, repo, app_name, source_folder):
@@ -54,7 +58,8 @@ def _init_repo(location):
 
 def _run_command(cwd, args):
     args = ["git"] + args
-    logger.warning("git command: %s", args)
+    str = ' '.join(args)
+    print("\033[33m{}\033[00m".format("* {0}".format(str)))
     env_kwargs = {}
     result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd)
     if result > 0:

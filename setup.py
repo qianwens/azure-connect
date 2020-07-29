@@ -25,6 +25,8 @@ CLASSIFIERS = [
 
 DEPENDENCIES = [
     'PrettyTable~=0.7.2',
+    'pyfiglet~=0.8.post1',
+    'halo~=0.0.29'
 ]
 
 setup(

@@ -17,6 +17,7 @@ import prettytable as pt
 import os
 from getpass import getpass
 from ._app import App
+from halo import Halo
 
 logger = get_logger(__name__)
 
@@ -30,14 +31,17 @@ class AppClient:
         self._keyvault_cache = {}
 
     def create_app(self):
-        logger.warning("Create app: {0}".format(self.app.name))
+        spinner = Halo(text="[app] Storing app: \033[43m{0}\033[00m ...".format(self.app.name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         # generate app config
         with open(".\\" + self.app.name + "\\app.json", 'w') as outfile:
             json.dump(self.app.__dict__, outfile)
+        spinner.succeed("[app] Stored app: \033[43m{0}\033[00m".format(self.app.name))
 
     def deploy_app(self, environment):
         # create resource group
-        logger.warning("Deploy app {0} in environment: {1}".format(self.app.name, environment))
+        print("\033[92m{}\033[00m".format("* Begin deploy app infrastructure in environment: {0}".format(environment)))
         rg = self.app.environments[environment].get('resourceGroup')
         location = self.app.environments[environment].get('location')
         self._create_resource_group(rg, location)
@@ -97,7 +101,7 @@ class AppClient:
         # assume we only have one webapp service here
         service_name = self.app.services[0].get('name') + self.app.id_suffix + environment
         url = "https://{0}.azurewebsites.net".format(service_name)
-        logger.warning("Open browser at {0}".format(url))
+        print("\033[92m{}\033[00m".format("* Open browser at {0}".format(url)))
         webbrowser.open(url)
 
     def local_run(self, environment):
@@ -117,22 +121,27 @@ class AppClient:
         for database in self.app.addons:
             migrate_command = database.get('migrate', None)
             if migrate_command:
+                print("\033[92m{}\033[00m".format(
+                    "* Begin migrate database: {0}".format(database.get('databaseName'))))
                 commands = ["cd site/wwwroot", "source /antenv/bin/activate",
                             "pip install -r requirements.txt", migrate_command]
-                print("command to run: ", commands)
+                #print("command to run: ", commands)
                 self.run_command(environment, commands)
 
     def _create_resource_group(self, name, location):
-        logger.warning("Creating resource group: {0}...".format(name))
+        spinner = Halo(text="[app] Creating resource group: \033[43m{0}\033[00m ...".format(name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         parameters = [
             'group', 'create',
             '--name', name,
             '--location', location,
             '--tags', 'app='+self.app.name,
-            '-o', 'table'
+            '-o', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource group %s' % name)
+        spinner.succeed("[app] Created resource group: \033[43m{0}\033[00m".format(name))
 
     def _get_keyvault(self, environment):
         parameters = [
@@ -152,33 +161,39 @@ class AppClient:
     def _create_keyvault(self, environment):
         self._keyvault_cache[environment] = {}
         key_vault_name = environment + self.app.id_suffix
-        logger.warning("Creating keyvault: {0}...".format(key_vault_name))
+        spinner = Halo(text="[app] Creating key vault: \033[43m{0}\033[00m ...".format(key_vault_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         parameters = [
             'keyvault', 'create',
             '--name', key_vault_name,
             '--location', self.app.environments[environment].get('location'),
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
             '--tags', 'app='+self.app.name,
-            '-o', 'table'
+            '-o', 'none'
         ]
 
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create keyvault %s' % key_vault_name)
+        spinner.succeed("[app] Created key vault: \033[43m{0}\033[00m".format(key_vault_name))
 
     def _create_deploy_account(self, environment):
         import uuid
         password = str(uuid.uuid4())
         user_name = "deployuser" + self.app.id_suffix + environment
-        logger.warning('creating web app deploy user: {0}...'.format(user_name))
+        spinner = Halo(text='[webapp] Creating web app deploy user: \033[43m{0}\033[00m ...'.format(user_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         self._store_secret(environment, "deployuser" + environment, password)
         parameters = [
             'webapp', 'deployment', 'user', 'set',
             '--user-name', user_name,
             '--password', password,
-            '-o', 'table'
+            '-o', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create deployment account %s' % user_name)
+        spinner.succeed('[webapp] Created web app deploy user: \033[43m{0}\033[00m'.format(user_name))
 
     def _get_deploy_account(self, environment):
         return "deployuser" + self.app.id_suffix + environment,\
@@ -195,7 +210,9 @@ class AppClient:
         self._create_deploy_account(environment)
         service_name = service.get('name') + self.app.id_suffix + environment
         service_plan_name = environment + self.app.id_suffix
-        logger.warning('creating app service plan: {0}...'.format(service_plan_name))
+        spinner = Halo(text='[webapp] Creating web app service plan: \033[43m{0}\033[00m ...'.format(service_plan_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         parameters = [
             'appservice', 'plan', 'create',
             '--name', service_plan_name,
@@ -205,12 +222,15 @@ class AppClient:
             '--is-linux',
             '--sku', 'S1', # F1 free servicefarm max 10
             '--tags', 'app=' + self.app.name,
-            '-o', 'table',
+            '-o', 'none',
             '--query', '[name, resourceGroup, location, maximumElasticWorkerCount, id]'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % self.app.name + environment)
-        logger.warning("Creating webapp: {0}...".format(service_name))
+        spinner.succeed('[webapp] Created web app service plan: \033[43m{0}\033[00m '.format(service_plan_name))
+        spinner = Halo(text="[webapp] Creating webapp service: \033[43m{0}\033[00m...".format(service_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         parameters = [
             'webapp', 'create',
             '--name', service_name,
@@ -218,23 +238,28 @@ class AppClient:
             '--plan', service_plan_name,
             '--runtime', service.get('properties').get('runtime'),
             '--tags', 'app='+self.app.name,
-            '-o', 'table',
+            '-o', 'none',
             '--query', '[defaultHostName, resourceGroup, location, state, id]'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % service_name)
-
-        logger.warning("Configuring local git...")
+        spinner.succeed("[webapp] Created webapp service: \033[43m{0}\033[00m".format(service_name))
+        spinner = Halo(text="[webapp] Configuring local git deploy...",
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         parameters = [
             'webapp', 'deployment', 'source', 'config-local-git',
             '--name', service_name,
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
-            '-o', 'table'
+            '-o', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % service_name)
+        spinner.succeed("[webapp] Configured local git deploy")
 
-        logger.warning("Configuring webapp settings...")
+        spinner = Halo(text="[webapp] Configuring webapp settings...",
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         settings = [service.get('env')]
         for database in self.app.addons:
             settings.append("DBHOST=" + self._get_database_hostname(database, environment))
@@ -246,19 +271,20 @@ class AppClient:
             'webapp', 'config', 'appsettings', 'set',
             '--name', service_name,
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
-            '-o', 'table',
+            '-o', 'none',
             '--settings',
         ] + settings
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % name)
-
+        spinner.succeed("[webapp] Configured webapp settings")
         # push source code
-        logger.warning("Pushing source code...")
+        print("\033[92m{}\033[00m".format("* Begin deploy source code in environment: {0}".format(environment)))
         from ._gitUtil import push_repo
         deploy_user, password = self._get_deploy_account(environment)
         repo_url = f"https://{deploy_user}:{password}@{service_name}.scm.azurewebsites.net/{service_name}.git"
         push_repo(repo_url, "master", self.app.name, service.get('source'))
-        logger.warning("Run `git push {0} master -f` to deploy source code.".format(repo_url))
+        print("\033[92m{}\033[00m".format("* Run `git push {0} master -f` to deploy source code.".format(repo_url)))
+
 
     def _create_database(self, database, environment):
         database_creator = {
@@ -275,7 +301,7 @@ class AppClient:
             '--name', name,
             '--vault-name', environment + self.app.id_suffix,
             '--value', value,
-            '-o', 'table'
+            '-o', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create secret %s' % name)
@@ -289,10 +315,15 @@ class AppClient:
         administrator_login_password = str(uuid.uuid4())
         # todo: check server exist
         # store password
-        logger.warning('Storing postfresql server admin user secret...')
+        spinner = Halo(text='[postgresql] Storing postgresql server admin user secret...',
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         self._store_secret(environment, database.get('serverName') + "-adminpassword", administrator_login_password)
+        spinner.succeed('[postgresql] Stored postgresql server admin user secret')
         server_name = environment + self.app.id_suffix
-        logger.warning('creating postgresql server: {0}...'.format(server_name))
+        spinner = Halo(text='[postgresql] Creating postgresql server: \033[43m{0}\033[00m ...'.format(server_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         # create server
         parameters = [
             'postgres', 'server', 'create',
@@ -303,23 +334,29 @@ class AppClient:
             '--admin-user', 'azureadmin',
             '--admin-password', administrator_login_password,
             '--tags', 'app=' + self.app.name,
-            '-o', 'table',
+            '-o', 'none',
             '--query', '[fullyQualifiedDomainName, location, resourceGroup, userVisibleState, id]'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % server_name)
-        logger.warning('creating postgresql DB: {0}...'.format(database.get('databaseName')))
+        spinner.succeed('[postgresql] Created postgresql server: \033[43m{0}\033[00m'.format(server_name))
+        spinner = Halo(text='[postgresql] Creating postgresql DB: \033[43m{0}\033[00m ...'.format(database.get('databaseName')),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         # create db
         parameters = [
             'postgres', 'db', 'create',
             '--name', database.get('databaseName'),
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
             '--server-name', server_name,
-            '-o', 'table'
+            '-o', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % server_name)
-        logger.warning('Opening postgres server firewall for azure service access...')
+        spinner.succeed('[postgresql] Created postgresql DB: \033[43m{0}\033[00m'.format(database.get('databaseName')))
+        spinner = Halo(text='[postgresql] Opening postgres server firewall for azure service access...',
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         # configure azure firewall
         parameters = [
             'postgres', 'server', 'firewall-rule', 'create',
@@ -328,10 +365,11 @@ class AppClient:
             '--server-name', server_name,
             '--start-ip-address', '0.0.0.0',
             '--end-ip-address', '0.0.0.0',
-            '-o', 'table'
+            '-o', 'none'
         ]
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % server_name)
+        spinner.succeed('[postgresql] Opened postgres server firewall for azure service access')
 
     def _get_database_hostname(self, database, environment):
         hostname_suffix = {

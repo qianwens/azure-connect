@@ -6,7 +6,7 @@ import time
 import sys
 from ._tunnel import TunnelServer
 from knack.log import get_logger
-
+from datetime import datetime, timedelta
 
 logger = get_logger(__name__)
 
@@ -31,8 +31,16 @@ def run_ssh(resource_group_name, webapp_name, commands=None):
 
     ssh : paramiko.SSHClient = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname="localhost", port=local_port, username="root", password="Docker!")
-    
+    wait_time = datetime.now()
+    while True:
+        try:
+            ssh.connect(hostname="localhost", port=local_port, username="root", password="Docker!")
+            break
+        except:
+            if wait_time + timedelta(seconds=30) < datetime.now():
+                raise
+            time.sleep(3)
+
     channel : paramiko.Channel=ssh.invoke_shell()
     if commands:
         run_commands(channel, commands)
@@ -43,13 +51,15 @@ def run_ssh(resource_group_name, webapp_name, commands=None):
 
 
 def run_commands(chan, commands):
-    from datetime import datetime, timedelta
     wait_time = datetime.now()
+    has_output = False
     def writeall(sock):
         while True:
             nonlocal wait_time
+            nonlocal has_output
             wait_time = datetime.now()
             data = sock.recv(256)
+            has_output = True
             if not data:
                 sys.stdout.write("\r\n*** EOF ***\r\n\r\n")
                 sys.stdout.flush()
@@ -65,13 +75,17 @@ def run_commands(chan, commands):
     writer.start()
 
     import time
+    while True:
+        time.sleep(1)
+        if has_output:
+            break
     time.sleep(2)
     for d in commands:
         chan.send(d + "\n")
 
     while True:
         time.sleep(1)
-        if wait_time + timedelta(seconds=5) < datetime.now():
+        if wait_time + timedelta(seconds=30) < datetime.now():
             break
 
 

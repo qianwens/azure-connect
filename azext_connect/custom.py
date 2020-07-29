@@ -508,18 +508,24 @@ def validate_general(cmd, resource_group, name):
 
 
 def init_app(cmd):
+    from pyfiglet import Figlet
+    f = Figlet(font='slant')
+    print(f.renderText('Cupertino'))
+
     from os import path
     if path.isfile(".\\app.json"):
         with open("./app.json", 'r') as f:
             app = App(data=f.read())
             if app.name:
-                print("Detected Cupertino app in current folder:", app.name)
+                logger.warning("Detected Cupertino app in current folder: {0}".format(app.name))
                 op_index = prompt_choice_list("Choose operations:", ['show', 'open', 'deploy', 'log', 'run', 'local'],
                                               default=1)
                 AppOperations[op_index](cmd)
 
     from ._app_sample import sample_source_list, sample_name_list, sample_temp_list
-    sample_index = prompt_choice_list("Create Cupertino app from sample solutions: ", sample_name_list,
+
+    print("\033[92m{}\033[00m".format('* Welcome to Cupertino app cli!'))
+    sample_index = prompt_choice_list("> Please select a sample webapp solutions: ", sample_name_list,
                                       default=1)
 
     import uuid
@@ -527,9 +533,9 @@ def init_app(cmd):
     import pkgutil
     data = pkgutil.get_data(__name__, "app_samples/"+sample_temp_list[sample_index]+".json")
     app_hash = uuid.uuid4().hex[:18]
-    app_name = prompt("Enter app name (default '{0}'): ".format(sample_temp_list[sample_index]+app_hash))\
+    app_name = prompt("> Please enter app name (default '{0}'): ".format(sample_temp_list[sample_index]+app_hash))\
                or sample_temp_list[sample_index]+app_hash
-    location = prompt("Enter app dev deployment location (default '{0}'): ".format('eastus')) or 'eastus'
+    location = prompt("> Please enter app dev deployment location (default '{0}'): ".format('eastus')) or 'eastus'
     app = App(data=data)
     app.name = app_name
     app.id_suffix = app_hash
@@ -539,6 +545,7 @@ def init_app(cmd):
     app_client = AppClient(app)
     app_client.create_app()
     app_client.deploy_app("dev")
+    app_client.open_app("dev")
 
 
 def deploy_app(cmd):
