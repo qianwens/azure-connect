@@ -417,17 +417,9 @@ class AppClient:
                 contents[4] = '\033[31;1m' + contents[4] + '\033[0m'
             elif contents[4].startswith('WARNING'):
                 contents[4] = '\033[35;1m' + contents[4] + '\033[0m'
-            elif contents[4].startswith('STATEMENT') or contents[4].startswith('LOG'):
+            elif contents[4].startswith('STATEMENT'):
                 contents[4] = '\033[32;1m' + contents[4] + '\033[0m'
             return [contents[0] + '-' + contents[1] + '-' + times[0] + ' ' + times[1], server_name + '[postresql]: ' + contents[4]]
-        # contents = log.split(':', 3)
-        # times = contents[2].split(' ')
-        # if (len(times) == 1):
-        #     return None
-        # if (len(contents) == 1):
-        #     return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ']
-        # else:
-        #     return [contents[0] + ':' + contents[1] + ':' + times[0], server_name + '[postresql]: ' + contents[3]]
 
     def _get_service_log(self, service, environment):
         service_loggers = {
