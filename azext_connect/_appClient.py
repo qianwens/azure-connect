@@ -46,11 +46,36 @@ class AppClient:
         # create db
         for db in self.app.addons:
             self._create_database(db, environment)
+            self._set_database_firewall(db, environment)
         # create services
+        self.update_launch_file(environment)
         for service in self.app.services:
             self._create_service(service, environment)
 
         self.migrate_db(environment)
+        
+    def update_launch_file(self, environment):
+        for service in self.app.services:
+            if 'source' not in service or not service['source']:
+                continue
+            launch_path = os.path.join(".\\" + self.app.name, service['source'], '.vscode', 'launch.json')
+            if os.path.exists(launch_path):
+                with open(launch_path, 'r') as fp:
+                    content = fp.read()
+                    for database in self.app.addons:
+                        content = content.replace('{DBHOST}', self._get_database_hostname(database, environment))\
+                            .replace('{DBUSER}', 'azureadmin@' + environment + self.app.id_suffix)\
+                            .replace('{DBNAME}', database.get('databaseName'))
+                        secrets = self._get_keyvault_secrets(environment)
+                        for key, value in secrets.items():
+                            if key == database.get('serverName') + "-adminpassword":
+                                content.replace('{DBPASS}', self._get_secret(environment, database.get(
+                                    'serverName') + "-adminpassword"))
+                                content = content.replace('{DBPASS}', value)
+                                break
+                        break
+                with open(launch_path, 'w') as fp:
+                    fp.write(content)
 
     def get_app_log(self, environment):
         # get db log
