@@ -82,11 +82,13 @@ class AppClient:
         # get db log
         for db in self.app.addons:
             log = self._get_database_log(db, environment)
-            logs.extend(log)
+            if log is not None:
+                logs.extend(log)
         # get app log
         for service in self.app.services:
             log = self._get_service_log(service, environment)
-            logs.extend(log)
+            if log is not None:
+                logs.extend(log)
 
         sorted_logs = sorted(logs, key=lambda log: log[0])
         
@@ -635,7 +637,7 @@ class AppClient:
         service_name = service.get('name') + self.app.id_suffix + environment
 
         print("Name\t\t {0}".format(service_name))
-        print("HostNames\t {0}.azurewebsites.net".format(service_name))
+        print("HostName\t https://{0}.azurewebsites.net".format(service_name))
         print("GitURL\t\t https://{0}.scm.azurewebsites.net/{0}.git".format(service_name))
         print("Environment\t {0}".format(environment))
 
