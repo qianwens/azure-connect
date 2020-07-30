@@ -315,7 +315,7 @@ class AppClient:
         deploy_user, password = self._get_deploy_account(environment)
         repo_url = f"https://{deploy_user}:{password}@{service_name}.scm.azurewebsites.net/{service_name}.git"
         push_repo(repo_url, "master", self.app.name, service.get('source'))
-        print("\033[92m{}\033[00m".format("* Run `git push {0} master -f` to deploy source code.".format(repo_url)))
+        print("\033[92m{}\033[00m".format("* Run `git push --set-upstream {0} master -f` to deploy source code.".format(repo_url)))
 
 
     def _create_database(self, database, environment):
