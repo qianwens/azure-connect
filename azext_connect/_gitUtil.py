@@ -59,12 +59,15 @@ def _init_repo(location):
 def _run_command(cwd, args):
     args = ["git"] + args
     str = ' '.join(args)
-    print("\033[33m{}\033[00m".format("* {0}".format(str)))
+    spinner = Halo(text=str,
+                   spinner='dots', text_color='yellow', color='blue')
+    spinner.start()
     env_kwargs = {}
-    result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd)
+    fnull = open(os.devnull, 'w')
+    result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd, stdout=fnull, stderr=subprocess.STDOUT)
     if result > 0:
         raise CLIError('Failed to perform {} operation.'.format(args[1]))
-
+    spinner.succeed()
 
 def _urlretrieve(url, location):
     import io

@@ -77,7 +77,7 @@ class TunnelServer(object):
                 is_port_open = True
             return is_port_open
 
-    def is_webapp_up(self):
+    def is_webapp_up(self, hide_output=False):
         import certifi
         import urllib3
         from azure.cli.core.util import should_disable_connection_verify
@@ -99,8 +99,8 @@ class TunnelServer(object):
             headers=headers,
             preload_content=False
         )
-
-        logger.warning('Verifying if app is running....')
+        if not hide_output:
+            logger.warning('Verifying if app is running....')
 
         if r.status != 200:
             raise CLIError("Failed to connect to '{}' with status code '{}' and reason '{}'".format(
@@ -118,7 +118,8 @@ class TunnelServer(object):
                     'To enable SSH follow this instructions: '
                     'https://go.microsoft.com/fwlink/?linkid=2132395')
             if json_data["canReachPort"] is True:
-                logger.warning("App is running. Trying to establish tunnel connection...")
+                if not hide_output:
+                    logger.warning("App is running. Trying to establish tunnel connection...")
                 return True
         elif 'STOPPED' in json_data["state"].upper():
             raise CLIError(
@@ -126,7 +127,8 @@ class TunnelServer(object):
                 'running before it can accept SSH connections.'
                 'Use `az webapp log tail` to review the app startup logs.')
         elif 'STARTING' in json_data["state"].upper():
-            logger.warning('Waiting for app to start up... ')
+            if not hide_output:
+                logger.warning('Waiting for app to start up... ')
         return False
 
     def _listen(self):

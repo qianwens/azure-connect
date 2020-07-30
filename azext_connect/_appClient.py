@@ -156,12 +156,14 @@ class AppClient:
         for database in self.app.addons:
             migrate_command = database.get('migrate', None)
             if migrate_command:
-                print("\033[92m{}\033[00m".format(
-                    "* Begin migrate database: {0}".format(database.get('databaseName'))))
+                spinner = Halo(text="[postgresql] Migrating database: \033[34m{0}\033[00m ...".format(database.get('databaseName')),
+                               spinner='dots', text_color='yellow', color='blue')
+                spinner.start()
                 commands = ["cd site/wwwroot", "source /antenv/bin/activate",
                             "pip install -r requirements.txt", migrate_command]
                 #print("command to run: ", commands)
                 self.run_command(environment, commands)
+                spinner.succeed("[postgresql] Migrated database: \033[34m{0}\033[00m".format(database.get('databaseName')))
 
     def _create_resource_group(self, name, location):
         spinner = Halo(text="[app] Creating resource group: \033[34m{0}\033[00m ...".format(name),
@@ -313,7 +315,7 @@ class AppClient:
             raise CLIError('Fail to create resource %s' % name)
         spinner.succeed("[webapp] Configured webapp settings")
         # push source code
-        print("\033[92m{}\033[00m".format("* Begin deploy source code in environment: {0}".format(environment)))
+        print("\033[92m{}\033[00m".format("* Begin deploy source code from folder: {0}".format(service.get('source'))))
         from ._gitUtil import push_repo
         deploy_user, password = self._get_deploy_account(environment)
         repo_url = f"https://{deploy_user}:{password}@{service_name}.scm.azurewebsites.net/{service_name}.git"

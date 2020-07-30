@@ -12,6 +12,9 @@ logger = get_logger(__name__)
 
 
 def run_ssh(resource_group_name, webapp_name, commands=None):
+    hide_output = False
+    if commands:
+        hide_output = True
     app_service_client : WebSiteManagementClient = get_client_from_cli_profile(WebSiteManagementClient)
 
     poller = app_service_client.web_apps.list_publishing_credentials(resource_group_name=resource_group_name, name=webapp_name)
@@ -22,12 +25,13 @@ def run_ssh(resource_group_name, webapp_name, commands=None):
     port = 443
 
     tunnel_server = TunnelServer("", 0, url, userName, userPwd)
-    _wait_for_webapp(tunnel_server)
+    _wait_for_webapp(tunnel_server, hide_output=hide_output)
     local_port = tunnel_server.local_port
-    t = threading.Thread(target=_start_tunnel, args=(tunnel_server,))
+    t = threading.Thread(target=_start_tunnel, args=(tunnel_server, ))
     t.daemon = True
     t.start()
-    print("Bind with local port:{}".format(local_port))
+    if not hide_output:
+        print("Bind with local port:{}".format(local_port))
 
     ssh : paramiko.SSHClient = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -61,15 +65,15 @@ def run_commands(chan, commands):
             data = sock.recv(256)
             has_output = True
             if not data:
-                sys.stdout.write("\r\n*** EOF ***\r\n\r\n")
-                sys.stdout.flush()
+                #sys.stdout.write("\r\n*** EOF ***\r\n\r\n")
+                #sys.stdout.flush()
                 break
-            try:
-                decoded_data = data.decode()
-                sys.stdout.write(decoded_data)
-            except:
-                pass
-            sys.stdout.flush()
+            #try:
+            #    decoded_data = data.decode()
+            #    sys.stdout.write(decoded_data)
+            #except:
+            #    pass
+            #sys.stdout.flush()
 
     writer = threading.Thread(target=writeall, args=(chan,))
     writer.start()
@@ -123,19 +127,21 @@ def windows_shell(chan):
         pass
 
 
-def _wait_for_webapp(tunnel_server:TunnelServer):
+def _wait_for_webapp(tunnel_server:TunnelServer, hide_output=False):
     tries = 0
     while True:
-        if tunnel_server.is_webapp_up():
+        if tunnel_server.is_webapp_up(hide_output=hide_output):
             break
         if tries == 0:
-            logger.warning('Connection is not ready yet, please wait')
+            if not hide_output:
+                logger.warning('Connection is not ready yet, please wait')
         if tries == 60:
             raise CLIError('SSH timeout, your app must be running before'
                            ' it can accept SSH connections. '
                            'Use `az webapp log tail` to review the app startup logs.')
         tries = tries + 1
-        logger.warning('.')
+        if not hide_output:
+            logger.warning('.')
         time.sleep(1)
 
 
