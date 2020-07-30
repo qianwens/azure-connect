@@ -58,8 +58,9 @@ def _init_repo(location):
 
 def _run_command(cwd, args):
     args = ["git"] + args
-    str = ' '.join(args)
-    spinner = Halo(text=str,
+    str_print = ' '.join(args)
+    str_print = (str_print[:75] + '..') if len(str_print) > 75 else str_print
+    spinner = Halo(text=str_print,
                    spinner='dots', text_color='yellow', color='blue')
     spinner.start()
     env_kwargs = {}
