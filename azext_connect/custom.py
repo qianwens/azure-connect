@@ -532,12 +532,13 @@ def init_app(cmd):
     from ._gitUtil import download_source
     import pkgutil
     data = pkgutil.get_data(__name__, "app_samples/"+sample_temp_list[sample_index]+".json")
-    app_hash = uuid.uuid4().hex[:18]
-    app_name = prompt("> Please enter app name (default '{0}'): ".format(sample_temp_list[sample_index]+app_hash))\
-               or sample_temp_list[sample_index]+app_hash
+    app_name_hash = uuid.uuid4().hex[:4]
+    app_name = prompt("> Please enter app name (default '{0}'): ".format(sample_temp_list[sample_index] + '-' + app_name_hash))\
+               or sample_temp_list[sample_index] + app_name_hash
     location = prompt("> Please enter app dev deployment location (default '{0}'): ".format('eastus')) or 'eastus'
     app = App(data=data)
     app.name = app_name
+    app_hash = uuid.uuid4().hex[:18]
     app.id_suffix = app_hash
     app.environments['dev'].update({'resourceGroup': app.environments['dev'].get('resourceGroup') + app.id_suffix})
     app.environments['dev'].update({'location': location})
