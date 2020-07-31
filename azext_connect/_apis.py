@@ -19,13 +19,14 @@ class CupertinoApi(object):
         self._mysqltoken = mysqltoken
 
     def _convert_auth_info(self, auth_info):
+        from ._model import AuthType
         authInfo = None
         if auth_info:
             authInfo = {
                 'authType': auth_info.auth_type,
                 'permissions': auth_info.permissions,
-                "id": auth_info.id,
-                "secret": auth_info.secret
+                "id": auth_info.id if auth_info.auth_type == 'Secret' else None,
+                "secret": auth_info.secret if auth_info.auth_type == 'Secret' else None
             }
         return authInfo
 

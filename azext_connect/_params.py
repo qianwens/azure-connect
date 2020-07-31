@@ -19,6 +19,7 @@ def load_arguments(self, _):
         c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
         c.argument('sql', options_list=['--sql-server', '-sql'], help='SQL server name in the same resource group or SQL server ID')
         c.argument('mysql', options_list=['--mysql-server', '-mysql'], help='SQL server name in the same resource group or mysql server ID')
+        c.argument('postgres', options_list=['--postgresql-server', '-postgres'], help ='PostgreSql server name in the same resource group or PostgreSql server ID')
         c.argument('cosmos', options_list=['--cosmos-account', '-cosmos'], help='CosmosDB Account name')
         c.argument('database', options_list=['--database-name', '-db'], help='Database name')
         c.argument(
