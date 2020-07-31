@@ -414,11 +414,11 @@ def _get_cosmos_database_type(resource_group, cosmos_account):
     capabilites = cli.result.result['capabilities']
     if kind == COSMOSDB_KIND[0]:
         for item in capabilites:
-            if item.Name == COSMOS_CAPABILITES[0]:
+            if item['name'] == COSMOS_CAPABILITES[0]:
                 return COSMOS_DATABASE_TYPE[0]
-            if item.Name == COSMOS_CAPABILITES[1]:
+            if item['name'] == COSMOS_CAPABILITES[1]:
                 return COSMOS_DATABASE_TYPE[1]
-            if item.Name == COSMOS_CAPABILITES[2]:
+            if item['name'] == COSMOS_CAPABILITES[2]:
                 return COSMOS_DATABASE_TYPE[2]
         return COSMOS_DATABASE_TYPE[3]
     if kind == COSMOSDB_KIND[1]:
