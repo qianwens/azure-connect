@@ -13,3 +13,5 @@ def load_command_table(self, _):
         g.custom_command('bind', 'bind_function')
     with self.command_group('cupertino') as g:
         g.custom_command('validate', 'validate_general')
+    with self.command_group('cupertino') as g:
+        g.custom_command('get', 'get_general')

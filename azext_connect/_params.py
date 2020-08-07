@@ -55,3 +55,7 @@ def load_arguments(self, _):
     with self.argument_context('cupertino validate') as c:
         c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
+
+    with self.argument_context('cupertino get') as c:
+        c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
+        c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')

@@ -471,9 +471,7 @@ def _bind(
     api = _create_api(cmd)
     result = api.create(subscription, resource_group, name, source, target, auth_info, additional_info)
     if result.ok is not True:
-        end = result.text.find('\r\n\r\nHEADERS\r\n=======')
-        msg = result.text[:end] if end > -1 else result.text
-        err_msg = 'Fail to bind {0} with {1}. Code:{2}. Detail:{3}'.format(source, target, result.status_code, msg)
+        err_msg = 'Fail to bind {0} with {1}. Code:{2}. Detail:{3}'.format(source, target, result.status_code, result.text)
         raise Exception(err_msg)
     res_obj = json.loads(result.text)
     return res_obj
@@ -546,9 +544,23 @@ def validate_general(cmd, resource_group, name):
         api = _create_api(cmd)
         result = api.validate(subscription, resource_group, name)
         if result.ok is not True:
-            end = result.text.find('\r\n\r\nHEADERS\r\n=======')
-            msg = result.text[:end] if end > -1 else result.text
-            err_msg = 'Fail to validate the connection {0}. Code:{1}. Detail:{2}'.format(name, result.status_code, msg)
+            err_msg = 'Fail to validate the connection {0}. Code:{1}. Detail:{2}'.format(name, result.status_code, result.text)
+            raise Exception(err_msg)
+        res_obj = json.loads(result.text)
+        print(json.dumps(res_obj, indent=2))
+    except Exception as e:
+        print(e)
+        logger.error(e)
+        sys.exit(1)
+
+
+def get_general(cmd, resource_group, name):
+    try:
+        subscription = get_subscription_id(cmd.cli_ctx)
+        api = _create_api(cmd)
+        result = api.get(subscription, resource_group, name)
+        if result.ok is not True:
+            err_msg = 'Fail to get the connection {0}. Code:{1}. Detail:{2}'.format(name, result.status_code, result.text)
             raise Exception(err_msg)
         res_obj = json.loads(result.text)
         print(json.dumps(res_obj, indent=2))

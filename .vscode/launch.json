@@ -22,7 +22,7 @@
             //"cupertino", "function", "bind", "-g", "functionkai2", "-n", "testKai06150212", "-app", "functionKai", "-func", "SignalRin", "-binding", "input", "-signalr", "KaiSignalR"
             // "cupertino", "function", "bind", "-g", "functionkai2", "-n", "test", "-app", "functionKai", "-func", "SignalOut", "-binding", "output", "-signalr", "KaiSignalR"
             // "cupertino", "validate", "-n", "test", "-g", "bwsonggroup"
-            // "cupertino", "get", "-n", "test", "-g", "bwsonggroup"
+            "cupertino", "get", "-n", "test", "-g", "bwsonggroup"
         ],
         "console": "integratedTerminal",
         "debugOptions": [
