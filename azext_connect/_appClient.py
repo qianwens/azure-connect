@@ -239,7 +239,7 @@ class AppClient:
         creator(service, environment)
 
     def _create_webapp(self, service, environment):
-        self._create_deploy_account(environment)
+        # self._create_deploy_account(environment)
         service_name = service.get('name') + self.app.id_suffix + environment
         service_plan_name = environment + self.app.id_suffix
         spinner = Halo(text='[webapp] Creating web app service plan: \033[34m{0}\033[00m ...'.format(service_plan_name),
@@ -309,10 +309,12 @@ class AppClient:
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % name)
         spinner.succeed("[webapp] Configured webapp settings")
+
         # push source code
         print("\033[92m{}\033[00m".format("* Begin deploy source code from folder: {0}".format(service.get('source'))))
+        # get deployment credential
+        deploy_user, password = self._get_deploy_credential(service_name, environment)
         from ._gitUtil import push_repo
-        deploy_user, password = self._get_deploy_account(environment)
         repo_url = f"https://{deploy_user}:{password}@{service_name}.scm.azurewebsites.net/{service_name}.git"
         push_repo(repo_url, "master", self.app.name, service.get('source'))
         print("\033[92m{}\033[00m".format("* Run `git push --set-upstream {0} master -f` to deploy source code.".format(repo_url)))
@@ -604,6 +606,23 @@ class AppClient:
         }
         info = database_info[database.get('type')]
         return info(database, environment)
+
+    def _get_deploy_credential(self, service_name, environment):
+        parameters = [
+            'webapp', 'deployment', 'list-publishing-profiles',
+            '--name', service_name,
+            '--resource-group', self.app.environments[environment].get('resourceGroup')
+        ]
+
+        from six import StringIO
+        stdout_buf = StringIO()
+        try:
+            if not DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                creds = json.loads(stdout_buf.getvalue())
+                return creds[0].get('userName'), creds[0].get('userPWD')
+        except SystemExit as ex:
+            pass
+        return None
 
     def _get_postgresql(self, database, environment):
         serverName = environment + self.app.id_suffix
