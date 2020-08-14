@@ -14,10 +14,12 @@ import random
 import time
 import subprocess
 import prettytable as pt
+import sys
 import os
 from getpass import getpass
 from ._app import App
 from halo import Halo
+import logging
 
 logger = get_logger(__name__)
 
@@ -48,9 +50,9 @@ class AppClient:
         # create keyvault
         self._create_keyvault(environment)
         # create db
-        for db in self.app.addons:
-            self._create_database(db, environment)
-            self._set_database_firewall(db, environment)
+        for addon in self.app.addons:
+            self._create_addon(addon, environment)
+            self._set_database_firewall(addon, environment)
         # create services
         self.update_launch_file(environment)
         for service in self.app.services:
@@ -233,7 +235,8 @@ class AppClient:
 
     def _create_service(self, service, environment):
         service_creators = {
-            "webapp": self._create_webapp
+            "webapp": self._create_webapp,
+            "kubernetesService": self._create_kubernetes_service
         }
         creator = service_creators[service.get('type')]
         creator(service, environment)
@@ -319,13 +322,118 @@ class AppClient:
         push_repo(repo_url, "master", self.app.name, service.get('source'))
         print("\033[92m{}\033[00m".format("* Run `git push --set-upstream {0} master -f` to deploy source code.".format(repo_url)))
 
+    def _create_kubernetes_service(self, service, environment):
+        service_name = service.get('name') + self.app.id_suffix + environment
+        spinner = Halo(text='[kubernetes] Creating kubernetes service: \033[34m{0}\033[00m ...'.format(service_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        parameters = [
+            'aks', 'create',
+            '--name', service_name,
+            '--location', self.app.environments[environment].get('location'),
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '-o', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create resource %s' % service_name)
+        spinner.succeed('[kubernetes] Created kubernetes service: \033[34m{0}\033[00m '.format(service_name))
 
-    def _create_database(self, database, environment):
+        spinner = Halo(text='[kubernetes] Getting kubernetes service credential: \033[34m{0}\033[00m ...'.format(service_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        parameters = [
+            'aks', 'get-credentials',
+            '--name', service_name,
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '-o', 'none'
+        ]
+        from six import StringIO
+        stdout_buf = StringIO()
+        if DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+            raise CLIError('Fail to get credential %s' % service_name)
+        spinner.succeed('[kubernetes] Got kubernetes service credential: \033[34m{0}\033[00m '.format(service_name))
+
+        from ._kubeUtil import create_docker_registry_secret, create_secret
+        for addon in self.app.addons:
+            self._create_secret_k8s(addon, environment)
+
+        image_name = 'my/node:latest'
+        spinner = Halo(text='[containerRegistry] Building node image: \033[34m{0}\033[00m ...'.format(image_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        from ._dockerUtil import mk_build_dir
+        mk_build_dir('node')
+        acr_server, _, _ = self._get_container_registry(environment)
+        parameters = [
+            'acr', 'build',
+            '--image', image_name,
+            '--registry', acr_server,
+            '--file', 'dockerfile',
+            '-o', 'none',
+            './' + self.app.name + '/docker/'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create resource %s' % service_name)
+        spinner.succeed('[containerRegistry] Built node image: \033[34m{0}\033[00m '.format(image_name))
+
+        from ._kubeUtil import helm_install
+        release_name = uuid.uuid4().hex[:18]
+        helm_install(release_name, 'bitnami/node', [('serviceType', 'LoadBalancer'), ('image.registry', acr_server + '.azurecr.io'),
+                                                    ('image.pullSecrets', '{my-acr-auth}'), ('image.repository', 'my/node'),
+                                                    ('image.tag', 'latest'), ('mongodb.install', 'false'),
+                                                    ('externaldb.secretName', 'sample-cosmos'), ('externaldb.ssl', 'true')])
+
+    def _create_addon(self, database, environment):
         database_creator = {
-            "postgresql": self._create_postgresql
+            "postgresql": self._create_postgresql,
+            "cosmos-mongodb": self._create_cosmos_mongodb,
+            "containerRegistry": self._create_container_registry
         }
         creator = database_creator[database.get('type')]
         creator(database, environment)
+
+    def _create_secret_k8s(self, addon, environment):
+        secret_creator = {
+            "cosmos-mongodb": self._create_cosmos_secret_k8s,
+            "containerRegistry": self._create_cr_secret_k8s
+        }
+        if secret_creator.get(addon.get('type')):
+            creator = secret_creator[addon.get('type')]
+            creator(addon, environment)
+
+    def _create_cosmos_secret_k8s(self, addon, environment):
+        from ._kubeUtil import create_secret
+        spinner = Halo(
+            text='[kubernetes] Creating cosmosDB secret: \033[34m{0}\033[00m ...'.format('sample-cosmos'),
+            spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        parameters = [
+            'cosmosdb', 'keys', 'list',
+            '--name', environment + self.app.id_suffix,
+            '-g', self.app.environments[environment].get('resourceGroup')
+        ]
+        from six import StringIO
+        stdout_buf = StringIO()
+        try:
+            if not DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                creds = json.loads(stdout_buf.getvalue())
+                pwd = creds.get('primaryMasterKey')
+        except SystemExit as ex:
+            pass
+        create_secret('sample-cosmos', [('host', addon.get('serverName') + '.mongo.cosmos.azure.com'),
+                                        ('port', '10255'), ('username', addon.get('serverName')),
+                                        ('password', pwd)])
+        spinner.succeed(
+            '[kubernetes] Created cosmosDB secret: \033[34m{0}\033[00m '.format('sample-cosmos'))
+
+    def _create_cr_secret_k8s(self, addon, environment):
+        from ._kubeUtil import create_docker_registry_secret
+        spinner = Halo(text='[kubernetes] Creating azure container registry secret: \033[34m{0}\033[00m ...'.format('my-acr-auth'),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        acr_server, acr_user, acr_pwd = self._get_container_registry(environment)
+        create_docker_registry_secret('my-acr-auth', acr_server + '.azurecr.io', acr_user, acr_pwd)
+        spinner.succeed('[kubernetes] Created azure container registry secret: \033[34m{0}\033[00m '.format('my-acr-auth'))
 
     def _store_secret(self, environment, name, value):
         self._keyvault_cache[environment][name] = value
@@ -404,6 +512,106 @@ class AppClient:
         if DEFAULT_CLI.invoke(parameters):
             raise CLIError('Fail to create resource %s' % server_name)
         spinner.succeed('[postgresql] Opened postgres server firewall for azure service access')
+
+    def _create_cosmos_mongodb(self, database, environment):
+        server_name = environment + self.app.id_suffix
+        spinner = Halo(text='[cosmosDB] Creating cosmosdb account: \033[34m{0}\033[00m ...'.format(server_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        # create server
+        parameters = [
+            'cosmosdb', 'create',
+            '--name', server_name,
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '--kind', 'MongoDB',
+            '--tags', 'app=' + self.app.name,
+            '-o', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create resource %s' % server_name)
+        spinner.succeed('[cosmosDB] Created cosmosdb account: \033[34m{0}\033[00m'.format(server_name))
+
+        spinner = Halo(text='[cosmosDB] Creating MongoDB database: \033[34m{0}\033[00m ...'.format(database.get('databaseName')),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        # create server
+        parameters = [
+            'cosmosdb', 'mongodb', 'database', 'create',
+            '--name', database.get('databaseName'),
+            '--account-name', server_name,
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '-o', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create resource %s' % server_name)
+
+        spinner.succeed('[cosmosDB] Created MongoDB database: \033[34m{0}\033[00m'.format(database.get('databaseName')))
+
+    def _create_container_registry(self, addon, environment):
+        server_name = environment + self.app.id_suffix
+        spinner = Halo(text='[containerRegistry] Creating container registry: \033[34m{0}\033[00m ...'.format(server_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
+        # create server
+        parameters = [
+            'acr', 'create',
+            '--name', server_name,
+            '--location', self.app.environments[environment].get('location'),
+            '--resource-group', self.app.environments[environment].get('resourceGroup'),
+            '--sku', 'Basic',
+            '-o', 'none'
+        ]
+        if DEFAULT_CLI.invoke(parameters):
+            raise CLIError('Fail to create resource %s' % server_name)
+        spinner.succeed('[containerRegistry] Created container registry: \033[34m{0}\033[00m'.format(server_name))
+
+        # create acr push sp
+        sp_name = "acrsp" + self.app.id_suffix + environment
+        parameters = [
+            'acr', 'show',
+            '--name', server_name,
+            '--resource-group', self.app.environments[environment].get('resourceGroup')
+        ]
+        from six import StringIO
+        stdout_buf = StringIO()
+        try:
+            if not DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                creds = json.loads(stdout_buf.getvalue())
+                acr_id =creds.get('id')
+        except SystemExit as ex:
+            pass
+        parameters = [
+            'ad', 'sp', 'create-for-rbac',
+            '--name', sp_name,
+            '--scopes', acr_id,
+            '--role', 'acrpush',
+            '--only-show-errors'
+        ]
+        from six import StringIO
+        stdout_buf = StringIO()
+        try:
+            logging.disable(logging.WARNING)
+            if not DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                spinner = Halo(
+                    text='[containerRegistry] Creating service principle to access container registry: \033[34m{0}\033[00m ...'.format(
+                        sp_name),
+                    spinner='dots', text_color='yellow', color='blue')
+                spinner.start()
+                creds = json.loads(stdout_buf.getvalue())
+                sp_id, sp_password =creds.get('appId'), creds.get('password')
+                self._store_secret(environment, "acr-server", server_name)
+                self._store_secret(environment, "acr-sp-id", sp_id)
+                self._store_secret(environment, "acr-sp-pwd", sp_password)
+                spinner.succeed(
+                    '[containerRegistry] Created service principle to access container registry: \033[34m{0}\033[00m'.format(
+                        sp_name))
+        except SystemExit as ex:
+            pass
+
+    def _get_container_registry(self, environment):
+        return self._get_secret(environment, "acr-server"),\
+               self._get_secret(environment, "acr-sp-id"),\
+               self._get_secret(environment, "acr-sp-pwd")
 
     def _get_database_hostname(self, database, environment):
         hostname_suffix = {
@@ -789,8 +997,10 @@ class AppClient:
         database_firewalls = {
             "postgresql": self._set_postgresql_firewall
         }
-        firewall = database_firewalls[database.get('type')]
-        firewall(database, environment, ip)
+
+        if database_firewalls.get(database.get('type'), None):
+            firewall = database_firewalls[database.get('type')]
+            firewall(database, environment, ip)
 
     def _set_postgresql_firewall(self, database, environment, ip):
         serverName = environment + self.app.id_suffix

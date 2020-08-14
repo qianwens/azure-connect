@@ -526,7 +526,7 @@ def init_app(cmd):
     from ._app_sample import sample_source_list, sample_name_list, sample_temp_list
 
     print("\033[92m{}\033[00m".format('* Welcome to Cupertino app cli!'))
-    sample_index = prompt_choice_list("> Please select a sample webapp solutions: ", sample_name_list,
+    sample_index = prompt_choice_list("> Please select a sample application: ", sample_name_list,
                                       default=1)
     import uuid
     from ._gitUtil import download_source

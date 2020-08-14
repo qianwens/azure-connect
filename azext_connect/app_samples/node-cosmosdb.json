@@ -1,0 +1,43 @@
+{
+    "name": "azure-nodejs-sample",
+    "version": "v1",
+    "services": [
+      {
+        "name": "nodejs-sample",
+        "properties": {
+          "helm": 
+          { 
+            "repo": "https://charts.bitnami.com/bitnami",
+            "chart": "node",
+            "values":
+            {
+              "serviceType": "LoadBalancer",
+              "mongodb": { "install": false },
+              "externaldb": { "ssl": true, "secretName": "{{sample-cosmos}}" },
+              "repository": "https://github.com/bitnami/sample-mean.git"
+            }
+          }
+        },
+        "type": "kubernetesService"
+      }
+    ],
+    "addons": [
+      {
+        "serverName":"sample-acr",
+        "type": "containerRegistry",
+        "authType": "servicePrinciple"
+      },
+      {
+        "serverName": "sample-cosmos",
+        "databaseName": "mydb",
+        "type": "cosmos-mongodb",
+        "authType": "secret"
+      }
+    ],
+    "environments": {
+      "dev": {
+        "location": "eastus",
+        "resourceGroup": "azure-sample-node"
+      }
+    }
+  }
