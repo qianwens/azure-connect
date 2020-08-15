@@ -129,12 +129,12 @@ class AppClient:
 
     def open_app(self, environment):
         import webbrowser
-        # get url of webapp
-        # assume we only have one webapp service here
-        service_name = self.app.services[0].get('name') + self.app.id_suffix + environment
-        url = "https://{0}.azurewebsites.net".format(service_name)
-        print("\033[92m{}\033[00m".format("* Open browser at {0}".format(url)))
-        webbrowser.open(url)
+        service_creators = {
+            "webapp": self._open_webapp,
+            "kubernetesService": self._open_kubernetes_service
+        }
+        creator = service_creators[self.app.services[0].get('type')]
+        creator(environment)
 
     def local_run(self, environment):
         for database in self.app.addons:
@@ -161,6 +161,15 @@ class AppClient:
                 #print("command to run: ", commands)
                 self.run_command(environment, commands)
                 spinner.succeed("[postgresql] Migrated database: \033[34m{0}\033[00m".format(database.get('databaseName')))
+
+    def _open_webapp(self, environment):
+        service_name = self.app.services[0].get('name') + self.app.id_suffix + environment
+        url = "https://{0}.azurewebsites.net".format(service_name)
+        print("\033[92m{}\033[00m".format("* Open browser at {0}".format(url)))
+        webbrowser.open(url)
+
+    def _open_kubernetes_service(self, environment):
+        pass
 
     def _create_resource_group(self, name, location):
         spinner = Halo(text="[app] Creating resource group: \033[34m{0}\033[00m ...".format(name),
@@ -347,10 +356,15 @@ class AppClient:
             '--resource-group', self.app.environments[environment].get('resourceGroup'),
             '-o', 'none'
         ]
-        from six import StringIO
-        stdout_buf = StringIO()
-        if DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
-            raise CLIError('Fail to get credential %s' % service_name)
+        with open(os.devnull, "w") as devnull:
+            old_stdout = sys.stdout
+            sys.stdout = devnull
+            from six import StringIO
+            stdout_buf = StringIO()
+            if DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                raise CLIError('Fail to get credential %s' % service_name)
+            sys.stdout = old_stdout
+
         spinner.succeed('[kubernetes] Got kubernetes service credential: \033[34m{0}\033[00m '.format(service_name))
 
         from ._kubeUtil import create_docker_registry_secret, create_secret
@@ -362,23 +376,31 @@ class AppClient:
                        spinner='dots', text_color='yellow', color='blue')
         spinner.start()
         from ._dockerUtil import mk_build_dir
-        mk_build_dir('node')
+        docker_path = mk_build_dir('node', self.app.name)
         acr_server, _, _ = self._get_container_registry(environment)
         parameters = [
             'acr', 'build',
             '--image', image_name,
             '--registry', acr_server,
-            '--file', 'dockerfile',
+            '--file', docker_path + '/dockerfile',
             '-o', 'none',
-            './' + self.app.name + '/docker/'
+            docker_path
         ]
-        if DEFAULT_CLI.invoke(parameters):
-            raise CLIError('Fail to create resource %s' % service_name)
+        with open(os.devnull, "w") as devnull:
+            old_stdout = sys.stdout
+            sys.stdout = devnull
+            from six import StringIO
+            stdout_buf = StringIO()
+            if DEFAULT_CLI.invoke(parameters, out_file=stdout_buf):
+                raise CLIError('Fail to build image %s' % image_name)
+            sys.stdout = old_stdout
         spinner.succeed('[containerRegistry] Built node image: \033[34m{0}\033[00m '.format(image_name))
 
         from ._kubeUtil import helm_install
-        release_name = uuid.uuid4().hex[:18]
-        helm_install(release_name, 'bitnami/node', [('serviceType', 'LoadBalancer'), ('image.registry', acr_server + '.azurecr.io'),
+        import uuid
+        release_name = environment + uuid.uuid4().hex[:8]
+        helm_install(release_name, 'https://charts.bitnami.com/bitnami', 'bitnami/node', [('serviceType', 'LoadBalancer'),
+                                                    ('service.type', 'LoadBalancer'), ('image.registry', acr_server + '.azurecr.io'),
                                                     ('image.pullSecrets', '{my-acr-auth}'), ('image.repository', 'my/node'),
                                                     ('image.tag', 'latest'), ('mongodb.install', 'false'),
                                                     ('externaldb.secretName', 'sample-cosmos'), ('externaldb.ssl', 'true')])
@@ -420,9 +442,9 @@ class AppClient:
                 pwd = creds.get('primaryMasterKey')
         except SystemExit as ex:
             pass
-        create_secret('sample-cosmos', [('host', addon.get('serverName') + '.mongo.cosmos.azure.com'),
-                                        ('port', '10255'), ('username', addon.get('serverName')),
-                                        ('password', pwd)])
+        create_secret('sample-cosmos', [('host', environment + self.app.id_suffix + '.documents.azure.com'),
+                                        ('port', '10255'), ('username', environment + self.app.id_suffix),
+                                        ('password', pwd), ('database', addon.get('databaseName'))])
         spinner.succeed(
             '[kubernetes] Created cosmosDB secret: \033[34m{0}\033[00m '.format('sample-cosmos'))
 

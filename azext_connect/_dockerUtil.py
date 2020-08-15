@@ -29,14 +29,18 @@ logger = get_logger(__name__)
 DEFAULT_CLI = get_default_cli()
 
 
-def mk_build_dir(name):
+def mk_build_dir(name, app_name):
     import pkgutil
-    data = pkgutil.get_data(__name__, name + "_docker/dockerfile")
-    path = "./docker"
-    if not os.path.isdir(path):
-        os.mkdir(path)
-    with open("./docker/dockerfile", 'w') as outfile:
-        outfile.write(data)
+    data = pkgutil.get_data(__name__, "docker/" + name + "/dockerfile")
+    docker_path = "./" + app_name + "/docker"
+    from os import path
+    if path.isfile("./app.json"):
+        docker_path = "./docker"
+    if not os.path.isdir(docker_path):
+        os.mkdir(docker_path)
+    with open(docker_path + "/dockerfile", 'w') as outfile:
+        outfile.write(data.decode())
+    return docker_path
 
 
 def _run_command(cwd, args):

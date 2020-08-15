@@ -30,23 +30,27 @@ DEFAULT_CLI = get_default_cli()
 
 
 def create_docker_registry_secret(secret_name, server, username, pwd):
+    args = ['kubectl', 'delete', 'secret', secret_name]
+    _run_command_silent('.', args)
     args = ['kubectl', 'create', 'secret', 'docker-registry', secret_name, '--docker-server', server,
             '--docker-username', username, '--docker-password', pwd]
-    _run_command('.', args)
+    _run_command_silent('.', args)
 
 
 def create_secret(secret_name, secrets):
+    args = ['kubectl', 'delete', 'secret', secret_name]
+    _run_command_silent('.', args)
     secret_format = '--from-literal={}={}'
     args = ['kubectl', 'create', 'secret', 'generic', secret_name]
     for secret in secrets:
         key, value = secret
         args.append(secret_format.format(key, value))
-    _run_command('.', args)
+    _run_command_silent('.', args)
 
 
 def helm_install(release_name, repo, chart, settings):
     args = ['helm', 'repo', 'add', 'bitnami', repo]
-    _run_command('.', args)
+    _run_command_silent('.', args)
     args = ['helm', 'install', release_name, chart]
     for setting in settings:
         key, value = setting
@@ -56,15 +60,17 @@ def helm_install(release_name, repo, chart, settings):
 
 
 def _run_command(cwd, args):
-    str_print = ' '.join(args)
-    str_print = (str_print[:75] + '..') if len(str_print) > 75 else str_print
-    #spinner = Halo(text=str_print,
-    #               spinner='dots', text_color='yellow', color='blue')
-    #spinner.start()
+    env_kwargs = {}
+
+    result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd)
+    if result > 0:
+        raise CLIError('Failed to perform {} operation.'.format(args[1]))
+
+
+def _run_command_silent(cwd, args):
     env_kwargs = {}
     fnull = open(os.devnull, 'w')
     result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd, stdout=fnull, stderr=subprocess.STDOUT)
     if result > 0:
         raise CLIError('Failed to perform {} operation.'.format(args[1]))
-    #spinner.succeed()
 
