@@ -206,7 +206,7 @@ class TunnelServer(object):
                     break
         except Exception as ex:  # pylint: disable=broad-except
             logger.info(ex)
-            logger.warning("Connection Timed Out")
+            # logger.warning("Connection Timed Out")
         finally:
             logger.info('Client disconnected %s', index)
             client.close()

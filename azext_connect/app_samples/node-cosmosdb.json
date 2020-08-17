@@ -4,21 +4,11 @@
     "services": [
       {
         "name": "nodejs-sample",
+        "type": "kubernetesService",
         "properties": {
-          "helm": 
-          { 
-            "repo": "https://charts.bitnami.com/bitnami",
-            "chart": "node",
-            "values":
-            {
-              "serviceType": "LoadBalancer",
-              "mongodb": { "install": false },
-              "externaldb": { "ssl": true, "secretName": "{{sample-cosmos}}" },
-              "repository": "https://github.com/bitnami/sample-mean.git"
-            }
-          }
+          "runtime": "node"
         },
-        "type": "kubernetesService"
+        "source": "sample-mean-master"
       }
     ],
     "addons": [

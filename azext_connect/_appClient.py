@@ -416,7 +416,7 @@ class AppClient:
 
         import time
         time.sleep(60)
-        spinner.succeed('[helm] Installed release: \033[34m{0}\033[00m '.format(release_name2))
+        spinner.succeed('[helm] Installed release: \033[34m{0}\033[00m '.format(release_name))
 
     def _create_addon(self, database, environment):
         database_creator = {
