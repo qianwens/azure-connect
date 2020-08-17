@@ -31,7 +31,7 @@ DEFAULT_CLI = get_default_cli()
 
 def create_docker_registry_secret(secret_name, server, username, pwd):
     args = ['kubectl', 'delete', 'secret', secret_name]
-    _run_command_silent('.', args)
+    _run_command_silent('.', args, True)
     args = ['kubectl', 'create', 'secret', 'docker-registry', secret_name, '--docker-server', server,
             '--docker-username', username, '--docker-password', pwd]
     _run_command_silent('.', args)
@@ -39,7 +39,7 @@ def create_docker_registry_secret(secret_name, server, username, pwd):
 
 def create_secret(secret_name, secrets):
     args = ['kubectl', 'delete', 'secret', secret_name]
-    _run_command_silent('.', args)
+    _run_command_silent('.', args, True)
     secret_format = '--from-literal={}={}'
     args = ['kubectl', 'create', 'secret', 'generic', secret_name]
     for secret in secrets:
@@ -56,7 +56,22 @@ def helm_install(release_name, repo, chart, settings):
         key, value = setting
         args.append('--set')
         args.append(key + '=' + value)
-    _run_command('.', args)
+    _run_command_silent('.', args)
+
+
+def get_public_ip(service_name):
+    args = ['kubectl', 'get', 'svc', '--namespace', 'default', service_name, '--template',
+            '{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}']
+    env_kwargs = {}
+    import time
+    from subprocess import check_output, CalledProcessError
+    while True:
+        try:
+            with open(os.devnull, 'w') as devnull:
+                result = subprocess.check_output(args, env=dict(os.environ, **env_kwargs), stderr=devnull)
+                return result.decode()
+        except CalledProcessError as e:
+            time.sleep(3)
 
 
 def _run_command(cwd, args):
@@ -67,10 +82,10 @@ def _run_command(cwd, args):
         raise CLIError('Failed to perform {} operation.'.format(args[1]))
 
 
-def _run_command_silent(cwd, args):
+def _run_command_silent(cwd, args, ignore_fail=False):
     env_kwargs = {}
     fnull = open(os.devnull, 'w')
     result = subprocess.call(args, env=dict(os.environ, **env_kwargs), cwd=cwd, stdout=fnull, stderr=subprocess.STDOUT)
-    if result > 0:
+    if not ignore_fail and result > 0:
         raise CLIError('Failed to perform {} operation.'.format(args[1]))
 

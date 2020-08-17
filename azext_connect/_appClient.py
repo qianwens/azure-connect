@@ -128,7 +128,6 @@ class AppClient:
         print(table)
 
     def open_app(self, environment):
-        import webbrowser
         service_creators = {
             "webapp": self._open_webapp,
             "kubernetesService": self._open_kubernetes_service
@@ -163,12 +162,20 @@ class AppClient:
                 spinner.succeed("[postgresql] Migrated database: \033[34m{0}\033[00m".format(database.get('databaseName')))
 
     def _open_webapp(self, environment):
+        import webbrowser
         service_name = self.app.services[0].get('name') + self.app.id_suffix + environment
         url = "https://{0}.azurewebsites.net".format(service_name)
         print("\033[92m{}\033[00m".format("* Open browser at {0}".format(url)))
         webbrowser.open(url)
 
     def _open_kubernetes_service(self, environment):
+        import webbrowser
+        # get service_name
+        svc_name = environment + self.app.id_suffix[:8] + '-node'
+        from ._kubeUtil import get_public_ip
+        url = 'http://' + get_public_ip(svc_name)
+        print("\033[92m{}\033[00m".format("* Open browser at {0}".format(url)))
+        webbrowser.open(url)
         pass
 
     def _create_resource_group(self, name, location):
@@ -396,14 +403,20 @@ class AppClient:
             sys.stdout = old_stdout
         spinner.succeed('[containerRegistry] Built node image: \033[34m{0}\033[00m '.format(image_name))
 
+        release_name = environment + self.app.id_suffix[:8]
+        spinner = Halo(text='[helm] Installing release: \033[34m{0}\033[00m ...'.format(release_name),
+                       spinner='dots', text_color='yellow', color='blue')
+        spinner.start()
         from ._kubeUtil import helm_install
-        import uuid
-        release_name = environment + uuid.uuid4().hex[:8]
         helm_install(release_name, 'https://charts.bitnami.com/bitnami', 'bitnami/node', [('serviceType', 'LoadBalancer'),
                                                     ('service.type', 'LoadBalancer'), ('image.registry', acr_server + '.azurecr.io'),
                                                     ('image.pullSecrets', '{my-acr-auth}'), ('image.repository', 'my/node'),
                                                     ('image.tag', 'latest'), ('mongodb.install', 'false'),
                                                     ('externaldb.secretName', 'sample-cosmos'), ('externaldb.ssl', 'true')])
+
+        import time
+        time.sleep(60)
+        spinner.succeed('[helm] Installed release: \033[34m{0}\033[00m '.format(release_name2))
 
     def _create_addon(self, database, environment):
         database_creator = {
