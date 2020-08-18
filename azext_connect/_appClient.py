@@ -43,7 +43,7 @@ class AppClient:
 
     def deploy_app(self, environment):
         # create resource group
-        print("\033[92m{}\033[00m".format("* Begin deploy app infrastructure in environment: {0}".format(environment)))
+        print("\033[92m{}\033[00m".format("* Begin provision app infrastructure in environment: {0}".format(environment)))
         rg = self.app.environments[environment].get('resourceGroup')
         location = self.app.environments[environment].get('location')
         self._create_resource_group(rg, location)
@@ -378,6 +378,7 @@ class AppClient:
         for addon in self.app.addons:
             self._create_secret_k8s(addon, environment)
 
+        print("\033[92m{}\033[00m".format("* Begin deploy application in kubernetes"))
         image_name = 'my/node:latest'
         spinner = Halo(text='[containerRegistry] Building node image: \033[34m{0}\033[00m ...'.format(image_name),
                        spinner='dots', text_color='yellow', color='blue')
