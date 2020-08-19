@@ -8,6 +8,7 @@ from knack.util import CLIError
 from azure.cli.command_modules.profile.custom import get_access_token
 from azure.cli.core import get_default_cli
 from azure.cli.core.commands.client_factory import get_subscription_id
+from knack.prompting import prompt, prompt_pass
 import json
 import random
 import time
@@ -488,6 +489,34 @@ def bind_webapp(
         scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
         source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
         target = _get_target_id(scope, sql=sql, cosmos=cosmos, mysql=mysql, postgres=postgres, database=database, keyvault=keyvault)
+        result = _bind(
+            cmd, subscription, resource_group, name, source,
+            target, authtype, permission, client_id, client_secret, username, password
+        )
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        print(e)
+        logger.error(e)
+        sys.exit(1)
+
+
+def bind_webapp_postgres(
+    cmd, resource_group, appname, server, database,
+    name=None, client_id=None, client_secret=None,
+    username=None, password=None, authtype='Secret', permission=None
+):
+    try:
+        if authtype == 'Secret':
+            if not username:
+                username = prompt('Username: ')
+            if not password:
+                password = prompt_pass(msg='Password: ')
+        if not name:
+            name = '{0}_{1}_{2}_{3}_{4}'.format(appname, server, database, int(time.time()), random.randint(10000, 99999)) 
+        subscription = get_subscription_id(cmd.cli_ctx)
+        scope = '/subscriptions/{0}/resourceGroups/{1}'.format(subscription, resource_group)
+        source = '{0}/providers/Microsoft.Web/sites/{1}'.format(scope, appname)
+        target = _get_target_id(scope, postgres=server, database=database)
         result = _bind(
             cmd, subscription, resource_group, name, source,
             target, authtype, permission, client_id, client_secret, username, password

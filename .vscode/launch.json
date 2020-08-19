@@ -7,7 +7,7 @@
         "name": "Azure CLI Debug (Integrated Console)",
         "type": "python",
         "request": "launch",
-        "pythonPath": "${config:python.pythonPath}",
+        "pythonPath": "${config:python.interpreterPath}",
         "program": "${workspaceRoot}/../azure-cli/src/azure-cli/azure/cli/__main__.py",
         "cwd": "${workspaceRoot}",
         "args": [
@@ -17,12 +17,16 @@
             // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-mysql", "bwsongmysql2", "-db", "sys", "-g", "bwsonggroup", "-auth", "SECRET", "-user", "bwsong", "-pwd", "password"
             // "cupertino", "webapp", "bind","-n", "test", "-app", "bwsongapp", "-mysql", "bwsongmysql2", "-db", "sys", "-g", "bwsonggroup", "-auth", "MSI"
             // "cupertino", "webapp", "bind", "-n", "test", "-app", "bwsongapp", "-postgres", "bwsongpostsql", "-db", "bwsongpostdb", "-g", "bwsonggroup", "-auth", "SECRET", "-user", "bwsong", "-pwd", "password"
-            // "cupertino", "webapp", "bind", "-n", "test", "-app", "bwsongapp", "-postgres", "bwsongpostsql", "-db", "bwsongpostdb", "-g", "bwsonggroup", "-auth", "MSI"
+            //"cupertino", "webapp", "postgres", "bind", "-n", "test", "-app", "bwsongapp", "-postgres", "bwsongpostsql", "-db", "bwsongpostdb", "-g", "bwsonggroup", "-auth", "MSI"
             // "cupertino", "springcloud", "bind", "-g", "shenwe", "-n", "test", "-spc", "springcloud", "-app", "apps", "-mysql", "mysqlserver", "-db", "databases", "-user", "username", "-pwd", "password"
             //"cupertino", "function", "bind", "-g", "functionkai2", "-n", "testKai06150212", "-app", "functionKai", "-func", "SignalRin", "-binding", "input", "-signalr", "KaiSignalR"
             // "cupertino", "function", "bind", "-g", "functionkai2", "-n", "test", "-app", "functionKai", "-func", "SignalOut", "-binding", "output", "-signalr", "KaiSignalR"
-            // "cupertino", "validate", "-n", "test", "-g", "bwsonggroup"
-            "cupertino", "get", "-n", "test", "-g", "bwsonggroup"
+            //"cupertino", "validate", "-n", "chagon11", "-g", "chagon-test"
+            //"cupertino", "get", "-n", "test", "-g", "bwsonggroup"
+            "cupertino", "webapp", "postgres", "bind"
+            //"cupertino", "webapp", "postgres", "bind", "-n", "chagon11", "-postgres", "chagon-postgres", "-db", "pollsdb", "-auth", "MSI"
+            //"cupertino", "webapp", "bind", "-h"
+            //"webapp", "create", "-n", "chagon-webapp01", "--plan", "chagon-plan"
         ],
         "console": "integratedTerminal",
         "debugOptions": [

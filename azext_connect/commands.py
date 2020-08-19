@@ -7,6 +7,8 @@ def load_command_table(self, _):
         g.custom_command('bind', 'bind_webapp')
         # g.custom_command('remove', '')
         # g.custom_command('list', '')
+    with self.command_group('cupertino webapp postgres') as g:
+        g.custom_command('bind', 'bind_webapp_postgres')
     with self.command_group('cupertino springcloud') as g:
         g.custom_command('bind', 'bind_springcloud')
     with self.command_group('cupertino function') as g:
