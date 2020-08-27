@@ -23,10 +23,10 @@
             // "cupertino", "function", "bind", "-g", "functionkai2", "-n", "test", "-app", "functionKai", "-func", "SignalOut", "-binding", "output", "-signalr", "KaiSignalR"
             //"cupertino", "validate", "-n", "chagon11", "-g", "chagon-test"
             //"cupertino", "get", "-n", "test", "-g", "bwsonggroup"
-            "cupertino", "webapp", "postgres", "bind"
+            "connect", "webapp", "postgres", "bind"
+            //"connect", "webapp", "postgres", "bind", "-h"
             //"cupertino", "webapp", "postgres", "bind", "-n", "chagon11", "-postgres", "chagon-postgres", "-db", "pollsdb", "-auth", "MSI"
             //"cupertino", "webapp", "bind", "-h"
-            //"webapp", "create", "-n", "chagon-webapp01", "--plan", "chagon-plan"
         ],
         "console": "integratedTerminal",
         "debugOptions": [
@@ -36,7 +36,7 @@
         ],
         "justMyCode": false,
         "env": {
-            "CONN_HOST": "https://cupertino-mvp.azurewebsites.net"
+            //"LOCAL_CONN_HOST": "https://localhost:44345"
         }
     }]
 }

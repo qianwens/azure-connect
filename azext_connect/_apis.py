@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+import urllib3
 
 
 class CupertinoApi(object):
@@ -10,14 +11,16 @@ class CupertinoApi(object):
     GET_URI = '{0}/subscriptions/{1}/resourceGroups/{2}/providers/Microsoft.Cupertino/connections/{3}'
 
     def __init__(self, authtoken, graphtoken, sqltoken, mysqltoken):
-        if 'CONN_HOST' in os.environ:
-            self._host = os.environ['CONN_HOST']
+        if 'LOCAL_CONN_HOST' in os.environ:
+            self._host = os.environ['LOCAL_CONN_HOST']
         else:
-            self._host = 'https://localhost:44345'
+            self._host = 'https://cupertinostaging.azurewebsites.net'
         self._authtoken = authtoken
         self._graphtoken = graphtoken
         self._sqltoken = sqltoken
         self._mysqltoken = mysqltoken
+        # disable ssl warnings
+        urllib3.disable_warnings()
 
     def _convert_auth_info(self, auth_info):
         from ._model import AuthType

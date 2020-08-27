@@ -19,17 +19,7 @@ def load_arguments(self, _):
     postgres_database_username_argument_type = CLIArgumentType(options_list=['--user-name', '-user'],
                                                                help="User name of the database. Only valid when auth type is secret",
                                                                local_context_attribute=LocalContextAttribute(name='postgres_admin_user_name', actions=[LocalContextAction.GET]))
-    with self.argument_context('connect') as c:
-        c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
-        c.argument('acr', options_list=['--acr'], help='ACR name.')
-        c.argument('aks', options_list=['--aks'], help='AKS name.')
-        c.argument('webapp', options_list=['--webapp'], help='Webapp Name')
-        c.argument('sql', options_list=['--sql'], help='SQL Server name')
-        c.argument('mysql', options_list=['--mysql'], help='MySQL Server name')
-        c.argument('asc', options_list=['--asc'], help='Azure Spring Cloud name')
-        c.argument('ascapp', options_list=['--ascapp'], help='Azure Spring Cloud App name')
-
-    with self.argument_context('cupertino webapp') as c:
+    with self.argument_context('connect webapp') as c:
         c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
         c.argument('appname', options_list=['--app-name', '-app'], help='Webapp name')
@@ -49,7 +39,7 @@ def load_arguments(self, _):
         c.argument('password', options_list=['--password', '-pwd'], help='Password of the database. Only valid when auth type is secret')
         c.argument('keyvault', options_list=['--keyvault', '-kvt'], help='Keyvault name in the same resource group.')
 
-    with self.argument_context('cupertino webapp postgres') as c:
+    with self.argument_context('connect webapp postgres') as c:
         c.argument('resource_group', arg_type=resource_group_name_type)
         c.argument('name',  options_list=['--connection-name', '-n'], help='Connection name')
         c.argument('appname', arg_type=webapp_name_argument_type)
@@ -64,7 +54,7 @@ def load_arguments(self, _):
         c.argument('username', arg_type=postgres_database_username_argument_type)
         c.argument('password', options_list=['--password', '-pwd'], help='Password of the database. Only valid when auth type is secret')
 
-    with self.argument_context('cupertino springcloud') as c:
+    with self.argument_context('connect springcloud') as c:
         c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
         c.argument('springcloud', options_list=['--spring-cloud', '-spc'], help='spring cloud name')
@@ -75,18 +65,18 @@ def load_arguments(self, _):
         c.argument('username', options_list=['--user-name', '-user'], help='User name of the database. Only valid when auth type is secret')
         c.argument('password', options_list=['--password', '-pwd'], help='Password of the database. Only valid when auth type is secret')
 
-    with self.argument_context('cupertino function') as c:
+    with self.argument_context('connect function') as c:
         c.argument('resource_group', options_list=['--resource-group', '-g'], help='Resource group to provision services.')
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
         c.argument('appname', options_list=['--app-name', '-app'], help='Function app name')
         c.argument('function_name', options_list=['--function-name', '-func'], help='Function name')
         c.argument('signalR', options_list=['--signalr', '-signalr'], help='SignalR service name')
-        c.argument('binding', options_list=['--binding-type', '-binding'], help='The binding type of the function')
+        c.argument('binding', options_list=['--binding-type', '-binding'], help='The binding type of the function: input or output')
 
-    with self.argument_context('cupertino validate') as c:
+    with self.argument_context('connect validate') as c:
         c.argument('resource_group', arg_type=resource_group_name_type)
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
 
-    with self.argument_context('cupertino get') as c:
+    with self.argument_context('connect get') as c:
         c.argument('resource_group', arg_type=resource_group_name_type)
         c.argument('name', options_list=['--connection-name', '-n'], help='Connection name')
