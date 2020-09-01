@@ -9,15 +9,6 @@ from .commands import load_command_table
 from ._params import load_arguments
 
 
-helps['connect'] = """
-    type: command
-    short-summary: Connect Azure services.
-    examples:
-        - name: Provision and deploy demo code for Azure services.
-          text: az connect --webapp myWebApp --sql mySql --resource-group rg
-"""
-
-
 class ConnectCommandsLoader(AzCommandsLoader):
 
     def __init__(self, cli_ctx=None):

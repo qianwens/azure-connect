@@ -17,22 +17,17 @@ class AuthInfo():
         client_secret=None, user=None, pwd=None
     ):
         self.permissions = None
-        self.credential = None
         if auth_type == AuthType.MSI:
             self.auth_type = 'SystemAssignedIdentity'
             self.permissions = permissions
         elif auth_type == AuthType.SP:
             self.auth_type = 'ServicePrincipal'
-            self.credential = {
-                'id': client_id,
-                'secret': client_secret
-            }
+            self.id = client_id
+            self.secret = client_secret
             self.permissions = permissions
         elif auth_type == AuthType.SECRET:
             self.auth_type = 'Secret'
-            self.credential = {
-                'id': user,
-                'secret': pwd
-            }
+            self.id = user
+            self.secret = pwd
         else:
             raise Exception('Auth Type is not supported')
